@@ -1,0 +1,33 @@
+appId: com.videobulkdownloader.app
+productName: Video Bulk Downloader
+directories:
+  output: release
+# The Electron main/preload (with the Fastify server) are bundled by esbuild.
+# Only the native module (better-sqlite3) is shipped as real node_modules.
+files:
+  - electron/dist/**/*
+  - package.json
+  - "node_modules/better-sqlite3/**/*"
+  - "node_modules/bindings/**/*"
+  - "node_modules/file-uri-to-path/**/*"
+asar: true
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**/*"
+extraResources:
+  - from: bin
+    to: bin
+    filter: ["**/*"]
+  - from: apps/web/out
+    to: web
+    filter: ["**/*"]
+win:
+  target:
+    - nsis
+  # We don't code-sign; skipping sign+rcedit avoids the winCodeSign download whose
+  # macOS symlinks can't extract on Windows without Developer Mode/admin.
+  signAndEditExecutable: false
+  artifactName: ${productName}-${version}-setup.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true

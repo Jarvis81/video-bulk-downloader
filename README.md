@@ -57,16 +57,21 @@ pnpm dev:web        # Next.js on http://localhost:3000
 
 ## How it works
 
-1. **Create a job** on the home page, then open it.
-2. Paste a **channel URL** (lists all videos) or a **single video URL** (just that one)
-   and click **Scan**. Results stream in live.
-3. Tick the videos you want (or select-all) and click **Download**. A native folder
-   picker opens; choose a destination. Downloads run **one at a time**, with live
-   progress, into `<folder>/<uploader>/<title> [id].mp4`.
-4. **Cookies** (top-right of a job): set "From browser" (Chrome/Edge/Firefox/…) or point
-   at a `cookies.txt` file — needed for Douyin and region/age-restricted content.
-5. **yt-dlp** can be updated in-app from the top bar (TikTok/Douyin extractors change
-   often — update if a scan stops working).
+Single-page workspace — no navigation:
+1. Paste a **channel URL** (lists all videos) or a **single video URL** (just that one)
+   and click **Scan**. Results stream in live; each scan appears in the **History** panel
+   (click a row to reload it).
+2. Tick the videos you want (or select-all / "Not done") and click **Download**. A native
+   folder picker opens (pick once; later downloads reuse it). Downloads run **one at a
+   time** with live progress into `<folder>/<uploader>/<title> [id].mp4` (H.264 preferred
+   so the mp4 plays without extra codecs).
+3. **Cookies**: needed for Douyin and region/age-restricted Bilibili/TikTok. In the
+   **desktop app**, use **Sign in** (embedded login — most reliable). In web mode, use the
+   cookie selector ("From browser" or a `cookies.txt` file).
+4. **Rate-limiting**: requests are paced per platform; on a block (e.g. Bilibili 412) the
+   platform is paused with a cooldown (banner shows remaining time) and resumes
+   automatically.
+5. **yt-dlp** can be updated from the top bar (TikTok/Douyin extractors change often).
 
 ## Configuration (env)
 
@@ -78,14 +83,32 @@ pnpm dev:web        # Next.js on http://localhost:3000
 | `VBD_JS_RUNTIME`       | auto (Node)                 | JS runtime yt-dlp uses for YouTube       |
 | `NEXT_PUBLIC_API_BASE` | `http://127.0.0.1:4319`     | API base the UI calls (web)              |
 
-## Notes & roadmap
+## Desktop app (Electron)
+
+The app wraps the UI + server in Electron (one process: Fastify serves the Next static
+export + API; a window loads it). The big win: an **embedded login** (Sign in) reads
+cookies from the app's own browser session, so Bilibili/Douyin/TikTok logins work without
+the Chrome cookie-DB-lock problems. Douyin channels are listed via a hidden window that
+intercepts Douyin's own API.
+
+```bash
+pnpm setup            # ensure bin/ has yt-dlp + ffmpeg
+pnpm app:rebuild      # rebuild better-sqlite3 for Electron's ABI (first time)
+pnpm app              # build export + bundle + launch the app
+pnpm dist             # build the Windows NSIS installer → release/
+```
+
+> **Native module ABI:** `better-sqlite3` is compiled per-runtime. After `pnpm app:rebuild`
+> (Electron ABI), web mode (`pnpm dev`) needs `pnpm rebuild:node` to switch back, and
+> vice-versa.
+
+## Notes
 
 - yt-dlp 2026+ needs a JS runtime for full YouTube extraction; the server points it at
   Node automatically.
-- Downloads write to the **machine running the backend** (your machine in local mode).
-- **Next up (P4):** package as a Windows desktop app with Electron — bundle
-  `yt-dlp.exe`/`ffmpeg.exe`, replace the folder picker with Electron's native dialog, and
-  enable Next.js `output: "standalone"`.
+- Downloads write to the machine running the app.
+- Bilibili/Douyin enforce per-IP rate limits; logged-in cookies + the built-in pacing help,
+  but a flagged IP still needs time or a different network.
 
 > Respect each platform's Terms of Service and copyright. Download only content you have
 > the right to.

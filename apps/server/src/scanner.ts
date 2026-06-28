@@ -1,7 +1,9 @@
 import { detectSource, platformLabel, type Platform, type Scan } from "@vbd/shared";
 import { jobs, scans, videos } from "./repo.js";
 import { bus } from "./events.js";
-import { scan as ytScan, type CookieConfig } from "./ytdlp.js";
+import { scan as ytScan, type CookieConfig, type ScanEntry } from "./ytdlp.js";
+import { enumerateBilibiliSpace, isBilibiliSpace } from "./bilibili.js";
+import { getDouyinEnumerator } from "./native.js";
 import { humanizeYtDlpError } from "./yterrors.js";
 import { formatRemaining, isBlockError, noteBlock, noteSuccess } from "./ratelimit.js";
 
@@ -41,11 +43,7 @@ async function runScan(
 ): Promise<void> {
   let detectedPlatform: Platform = scanRow.platform;
   try {
-    const handle = ytScan(
-      url,
-      scanRow.platform,
-      cookies,
-      (entry, index) => {
+    const onEntry = (entry: ScanEntry, index: number) => {
       const video = videos.insert({
         scanId: scanRow.id,
         jobId: scanRow.jobId,
@@ -61,9 +59,19 @@ async function runScan(
       detectedPlatform = entry.platform;
       bus.emit(scanRow.jobId, { type: "video:added", video });
       bus.emit(scanRow.jobId, { type: "scan:progress", scanId: scanRow.id, found: index + 1 });
-      },
-      limit,
-    );
+    };
+
+    // Pick the enumerator:
+    // - Bilibili user page → direct web API (richer + cookie-aware).
+    // - Douyin channel → native (Electron) enumerator if available (yt-dlp has none).
+    // - else → yt-dlp flat scan.
+    const mid = isBilibiliSpace(url);
+    const douyin = getDouyinEnumerator();
+    const handle = mid
+      ? enumerateBilibiliSpace(mid, cookies, onEntry, limit)
+      : scanRow.platform === "douyin" && scanRow.sourceType === "channel" && douyin
+        ? douyin(url, cookies, onEntry, limit)
+        : ytScan(url, scanRow.platform, cookies, onEntry, limit);
 
     const { count } = await handle.promise;
     // Refine: a single result is effectively a single-video scan.
@@ -77,10 +85,13 @@ async function runScan(
     let message: string;
     if (isBlockError(raw)) {
       const until = noteBlock(scanRow.platform);
+      const tip =
+        scanRow.platform === "bilibili"
+          ? "Log in to bilibili then set Cookies = From browser, or switch network/VPN."
+          : "Set Cookies = From browser, or switch network/VPN.";
       message =
         `${platformLabel(scanRow.platform)} blocked this request (rate-limit). ` +
-        `Pausing this platform ~${formatRemaining(until - Date.now())}. ` +
-        `Use cookies (From browser) or switch network/VPN.`;
+        `Pausing this platform ~${formatRemaining(until - Date.now())}. ${tip}`;
     } else {
       message = humanizeYtDlpError(raw, {
         platform: scanRow.platform,

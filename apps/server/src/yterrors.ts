@@ -10,6 +10,19 @@ export function humanizeYtDlpError(
 ): string {
   const msg = raw.trim();
 
+  // Already-friendly messages thrown by our own code pass through unchanged.
+  if (msg.startsWith("Couldn't read")) return msg;
+
+  // Browser cookie DB couldn't be read (usually: the browser is open and locks it).
+  if (/could not (copy|find).*cookie|permission denied.*cookies|cookie database|cookies database|failed to decrypt/i.test(msg)) {
+    return (
+      "Couldn't read your browser's cookies — on Windows the browser locks its cookie " +
+      "database while running. Fix: fully quit the browser and retry, or (more reliable) " +
+      "export a cookies.txt (e.g. the “Get cookies.txt LOCALLY” extension) and set " +
+      "Cookies = “cookies.txt file”."
+    );
+  }
+
   // Douyin has no user/channel extractor in yt-dlp.
   if (/unsupported url/i.test(msg) && ctx.platform === "douyin" && ctx.sourceType === "channel") {
     return (
@@ -19,12 +32,13 @@ export function humanizeYtDlpError(
     );
   }
 
-  // Bilibili anti-crawler: 412 after too many anonymous requests from this IP.
-  if (/http error 412|precondition failed/i.test(msg)) {
+  // Bilibili anti-crawler / risk-control (per-IP). Login cookies are the real fix.
+  if (/http error 412|precondition failed|风控|risk.?control|请求过于频繁|-352|-799|-412/i.test(msg)) {
     return (
-      "Bilibili is rate-limiting this network (HTTP 412 anti-bot). Fix: set Cookies to " +
-      "“From browser” — just open bilibili.com in that browser once (no login needed), then " +
-      "retry. If it persists, the IP is temporarily flagged: wait ~15–30 min or switch network/VPN."
+      "Bilibili blocked this network (anti-bot / risk-control). Best fix: LOG IN to " +
+      "bilibili.com in your browser, then set Cookies = “From browser” (a logged-in session " +
+      "passes risk-control and raises limits). If it persists, the IP is flagged — wait " +
+      "15–60 min or switch network/VPN."
     );
   }
 

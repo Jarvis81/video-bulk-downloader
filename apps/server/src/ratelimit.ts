@@ -70,7 +70,7 @@ export function throttleArgs(platform: Platform, mode: "scan" | "download"): str
 
 /** Does this yt-dlp error look like an anti-bot / rate-limit block? */
 export function isBlockError(message: string): boolean {
-  return /http error 412|precondition failed|http error 429|too many requests|rate.?limit|try again later|temporarily blocked|access denied/i.test(
+  return /http error 412|precondition failed|http error 429|too many requests|rate.?limit|try again later|temporarily blocked|access denied|风控|risk.?control|请求过于频繁|-352|-799|-412/i.test(
     message,
   );
 }

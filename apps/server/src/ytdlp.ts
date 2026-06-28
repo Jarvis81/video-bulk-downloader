@@ -283,6 +283,10 @@ export function download(
     "--no-simulate",
     "-f",
     "bv*+ba/b",
+    // Prefer H.264 video + AAC audio so the .mp4 plays natively on Windows
+    // (HEVC/H.265 and AV1 otherwise need a separate, sometimes paid, codec extension).
+    "-S",
+    "vcodec:h264,res,fps,acodec:aac",
     "--merge-output-format",
     "mp4",
     "--no-mtime",

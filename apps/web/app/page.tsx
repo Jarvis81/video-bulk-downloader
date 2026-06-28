@@ -19,6 +19,7 @@ import {
 import { useJobStream } from "@/hooks/useJobStream";
 import { TopBar } from "@/components/TopBar";
 import { CookieSelector } from "@/components/CookieSelector";
+import { SignIn } from "@/components/SignIn";
 import { VideoList } from "@/components/VideoList";
 import { HistoryPanel } from "@/components/HistoryPanel";
 
@@ -288,6 +289,7 @@ export default function WorkspacePage() {
 
           {/* settings strip */}
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+            {job && <SignIn job={job} />}
             {job && <CookieSelector job={job} />}
             <button
               onClick={changeFolder}

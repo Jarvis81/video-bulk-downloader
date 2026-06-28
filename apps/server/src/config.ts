@@ -3,7 +3,23 @@ import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+/**
+ * Module dir. Uses import.meta.url under tsx/ESM (web mode); falls back to cwd
+ * when bundled to CJS for Electron (where import.meta.url is undefined and these
+ * paths are overridden by VBD_* env anyway).
+ */
+function moduleDir(): string {
+  try {
+    if (typeof import.meta !== "undefined" && import.meta.url) {
+      return path.dirname(fileURLToPath(import.meta.url));
+    }
+  } catch {
+    /* ignore */
+  }
+  return process.cwd();
+}
+
+const __dirname = moduleDir();
 
 /** Repo root in dev (apps/server/src -> ../../..). */
 const repoRoot = path.resolve(__dirname, "../../..");
@@ -30,6 +46,15 @@ export const DATA_DIR = process.env.VBD_DATA_DIR
 
 export const DB_PATH = path.join(DATA_DIR, "app.db");
 export const DEFAULT_DOWNLOAD_DIR = path.join(DATA_DIR, "downloads");
+
+/**
+ * Static web build (Next export) served by Fastify inside Electron.
+ * - dev/web: <repoRoot>/apps/web/out (if built)
+ * - packaged: set VBD_WEB_DIR to the bundled export path
+ */
+export const WEB_DIR = process.env.VBD_WEB_DIR
+  ? path.resolve(process.env.VBD_WEB_DIR)
+  : path.join(repoRoot, "apps", "web", "out");
 
 export const YTDLP_PATH = path.join(BIN_DIR, exe("yt-dlp"));
 export const FFMPEG_PATH = path.join(BIN_DIR, exe("ffmpeg"));

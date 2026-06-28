@@ -76,11 +76,16 @@ export const retryDownload = (videoId: string) =>
   req<{ ok: boolean }>(`/api/downloads/${videoId}/retry`, { method: "POST" });
 
 /* system */
-export const pickFolder = (initialDir?: string) =>
-  req<{ path: string | null }>("/api/system/pick-folder", {
+export const pickFolder = async (initialDir?: string): Promise<{ path: string | null }> => {
+  // Inside Electron, use the native dialog via the preload bridge.
+  if (typeof window !== "undefined" && window.electronAPI?.pickFolder) {
+    return { path: await window.electronAPI.pickFolder(initialDir) };
+  }
+  return req<{ path: string | null }>("/api/system/pick-folder", {
     method: "POST",
     body: JSON.stringify({ initialDir }),
   });
+};
 export const getYtDlpVersion = () =>
   req<YtDlpVersion>("/api/system/ytdlp-version");
 

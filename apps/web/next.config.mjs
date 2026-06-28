@@ -3,9 +3,10 @@ const nextConfig = {
   reactStrictMode: true,
   // Consume the shared workspace package directly from source.
   transpilePackages: ["@vbd/shared"],
-  // NOTE: For the Electron build (P4) we'll enable `output: "standalone"`.
-  // It's omitted here because its file-tracing step needs symlink permission
-  // on Windows (Developer Mode / admin), which we'll arrange during packaging.
+  // Static export (the app is a single client route) → `apps/web/out`, which
+  // Fastify serves inside Electron. Avoids the Windows `standalone` symlink issue.
+  output: "export",
+  images: { unoptimized: true },
 };
 
 export default nextConfig;
