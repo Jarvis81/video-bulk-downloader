@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import readline from "node:readline";
 import fs from "node:fs";
-import type { CookieBrowser, CookieMode, Platform } from "@vbd/shared";
+import type { CookieBrowser, CookieMode, Platform, Quality } from "@vbd/shared";
 import { FFMPEG_DIR, YTDLP_PATH, isWindows } from "./config.js";
 import { throttleArgs } from "./ratelimit.js";
 
@@ -268,27 +268,42 @@ function cleanField(s: string): string | null {
   return t;
 }
 
-export function download(
-  webpageUrl: string,
-  folder: string,
-  platform: Platform,
-  cookies: CookieConfig,
-  cb: DownloadCallbacks,
-): DownloadHandle {
+/**
+ * Build format-selection args for a quality preset. Prefers H.264 + AAC so the
+ * .mp4 plays natively on Windows (HEVC/AV1 need extra, sometimes paid, codecs).
+ */
+function formatArgs(quality: Quality): string[] {
+  if (quality === "audio") {
+    return ["-f", "ba/b", "-x", "--audio-format", "mp3", "--audio-quality", "0"];
+  }
+  const sort = ["-S", "vcodec:h264,res,fps,acodec:aac"];
+  const merge = ["--merge-output-format", "mp4"];
+  if (quality === "best") {
+    return ["-f", "bv*+ba/b", ...sort, ...merge];
+  }
+  // Cap the video height (1080/720/480/360).
+  return ["-f", `bv*[height<=${quality}]+ba/b[height<=${quality}]/b`, ...sort, ...merge];
+}
+
+export interface DownloadOptions {
+  webpageUrl: string;
+  folder: string;
+  platform: Platform;
+  quality: Quality;
+  /** Dir for in-progress/fragment files (--paths temp); deleting it removes partials. */
+  tmpDir: string;
+  cookies: CookieConfig;
+}
+
+export function download(opts: DownloadOptions, cb: DownloadCallbacks): DownloadHandle {
+  const { webpageUrl, folder, platform, quality, tmpDir, cookies } = opts;
   const args = [
     "--no-playlist",
     "--newline",
     // `--print` makes yt-dlp quiet; `--progress` forces progress output anyway.
     "--progress",
     "--no-simulate",
-    "-f",
-    "bv*+ba/b",
-    // Prefer H.264 video + AAC audio so the .mp4 plays natively on Windows
-    // (HEVC/H.265 and AV1 otherwise need a separate, sometimes paid, codec extension).
-    "-S",
-    "vcodec:h264,res,fps,acodec:aac",
-    "--merge-output-format",
-    "mp4",
+    ...formatArgs(quality),
     "--no-mtime",
     "--socket-timeout",
     "30",
@@ -298,6 +313,9 @@ export function download(
     FFMPEG_DIR,
     "-P",
     folder,
+    // Keep partial/fragment files isolated so a cancel can wipe them cleanly.
+    "--paths",
+    `temp:${tmpDir}`,
     "-o",
     "%(uploader,channel,uploader_id)s/%(title).200B [%(id)s].%(ext)s",
     "--progress-template",

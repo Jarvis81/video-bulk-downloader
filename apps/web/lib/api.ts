@@ -6,16 +6,21 @@ import type {
   CookieMode,
   CookieBrowser,
   Platform,
+  Quality,
 } from "@vbd/shared";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:4319";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
+  // Only send a JSON content-type when there's a body — Fastify rejects an empty
+  // body with content-type application/json (400), which broke body-less POSTs
+  // like cancel/retry/update.
+  const headers: Record<string, string> = { ...(init?.headers as Record<string, string>) };
+  if (init?.body != null && !("Content-Type" in headers)) {
+    headers["Content-Type"] = "application/json";
+  }
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
     try {
@@ -48,6 +53,7 @@ export const updateJob = (
     cookieBrowser: CookieBrowser | null;
     cookieFilePath: string | null;
     defaultFolder: string | null;
+    quality: Quality;
   }>,
 ) => req<Job>(`/api/jobs/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 export const deleteJob = (id: string) =>
@@ -72,6 +78,8 @@ export const startDownload = (jobId: string, videoIds: string[], folder: string)
   });
 export const cancelDownload = (videoId: string) =>
   req<{ ok: boolean }>(`/api/downloads/${videoId}/cancel`, { method: "POST" });
+export const cancelScan = (scanId: string) =>
+  req<{ canceled: number }>(`/api/scans/${scanId}/cancel`, { method: "POST" });
 export const retryDownload = (videoId: string) =>
   req<{ ok: boolean }>(`/api/downloads/${videoId}/retry`, { method: "POST" });
 

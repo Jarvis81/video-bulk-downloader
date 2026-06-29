@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   cookie_browser   TEXT,
   cookie_file_path TEXT,
   default_folder   TEXT,
+  quality          TEXT NOT NULL DEFAULT 'best',
   created_at       TEXT NOT NULL,
   updated_at       TEXT NOT NULL
 );
@@ -64,6 +65,11 @@ CREATE TABLE IF NOT EXISTS settings (
 
 export function initDb(): void {
   db.exec(SCHEMA);
+  // Migrate older DBs that predate the `quality` column.
+  const jobCols = db.prepare(`PRAGMA table_info(jobs)`).all() as { name: string }[];
+  if (!jobCols.some((c) => c.name === "quality")) {
+    db.exec(`ALTER TABLE jobs ADD COLUMN quality TEXT NOT NULL DEFAULT 'best'`);
+  }
   // Any download left mid-flight by a crash/restart is no longer running.
   db.prepare(
     `UPDATE videos SET download_status = 'error', error = 'Interrupted (server restarted)', updated_at = ?

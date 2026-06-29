@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, Download, FolderOpen, Loader2, Search } from "lucide-react";
+import { Ban, Clock, Download, FolderOpen, Loader2, Search } from "lucide-react";
 import type { DownloadStatus, Scan, ServerEvent, Video } from "@vbd/shared";
 import { platformLabel } from "@vbd/shared";
 import {
   cancelDownload,
+  cancelScan,
   getCooldowns,
   getScan,
   getWorkspace,
@@ -19,6 +20,7 @@ import {
 import { useJobStream } from "@/hooks/useJobStream";
 import { TopBar } from "@/components/TopBar";
 import { CookieSelector } from "@/components/CookieSelector";
+import { QualitySelector } from "@/components/QualitySelector";
 import { SignIn } from "@/components/SignIn";
 import { VideoList } from "@/components/VideoList";
 import { HistoryPanel } from "@/components/HistoryPanel";
@@ -234,6 +236,15 @@ export default function WorkspacePage() {
     [videos, selected],
   );
 
+  // Active downloads in the CURRENT scan only (cancel is scoped to this view).
+  const hasActive = useMemo(
+    () =>
+      videos.some(
+        (v) => v.downloadStatus === "downloading" || v.downloadStatus === "queued",
+      ),
+    [videos],
+  );
+
   const allFilteredSelected = filtered.length > 0 && filtered.every((v) => selected.has(v.id));
   const someFilteredSelected = filtered.some((v) => selected.has(v.id));
 
@@ -289,6 +300,7 @@ export default function WorkspacePage() {
 
           {/* settings strip */}
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+            {job && <QualitySelector job={job} />}
             {job && <SignIn job={job} />}
             {job && <CookieSelector job={job} />}
             <button
@@ -394,18 +406,31 @@ export default function WorkspacePage() {
               ))}
             </div>
 
-            <button
-              onClick={() => download.mutate(videos.filter((v) => selected.has(v.id)).map((v) => v.id))}
-              disabled={download.isPending || selectedCount === 0}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-            >
-              {download.isPending ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : (
-                <Download size={15} />
+            <div className="ml-auto flex items-center gap-2">
+              {hasActive && (
+                <button
+                  onClick={() => activeScanId && cancelScan(activeScanId)}
+                  title="Cancel queued + in-progress downloads in this scan"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-red-600/90 px-3 py-1.5 font-medium text-white hover:bg-red-500"
+                >
+                  <Ban size={15} /> Cancel
+                </button>
               )}
-              Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
-            </button>
+              <button
+                onClick={() =>
+                  download.mutate(videos.filter((v) => selected.has(v.id)).map((v) => v.id))
+                }
+                disabled={download.isPending || selectedCount === 0}
+                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+              >
+                {download.isPending ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Download size={15} />
+                )}
+                Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
+              </button>
+            </div>
           </div>
 
           {download.error && (

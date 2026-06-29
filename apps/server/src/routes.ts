@@ -16,7 +16,7 @@ import {
 } from "./ratelimit.js";
 import { jobs, scans, videos } from "./repo.js";
 import { startScan } from "./scanner.js";
-import { cancelDownload, enqueueDownload } from "./queue.js";
+import { cancelDownload, cancelScanDownloads, enqueueDownload } from "./queue.js";
 import { bus } from "./events.js";
 import { pickFolder } from "./system.js";
 import { getVersion, updateYtDlp } from "./ytdlp.js";
@@ -161,6 +161,13 @@ export function registerRoutes(app: FastifyInstance): void {
     const { videoId } = req.params as { videoId: string };
     cancelDownload(videoId);
     return reply.code(202).send({ ok: true });
+  });
+
+  // Cancel all queued/in-flight downloads of one scan (scoped to the current view).
+  app.post("/api/scans/:scanId/cancel", async (req, reply) => {
+    const { scanId } = req.params as { scanId: string };
+    const canceled = cancelScanDownloads(scanId);
+    return reply.code(202).send({ canceled });
   });
 
   app.post("/api/downloads/:videoId/retry", async (req, reply) => {

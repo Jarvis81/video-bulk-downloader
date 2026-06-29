@@ -26,6 +26,18 @@ export type DownloadStatus =
 export type CookieMode = "none" | "browser" | "file";
 export type CookieBrowser = "chrome" | "edge" | "firefox" | "brave" | "opera" | "vivaldi";
 
+/** Download quality preset. `audio` = extract MP3. Others cap the video height. */
+export type Quality = "best" | "1080" | "720" | "480" | "360" | "audio";
+
+export const QUALITIES: { value: Quality; label: string }[] = [
+  { value: "best", label: "Best" },
+  { value: "1080", label: "1080p" },
+  { value: "720", label: "720p" },
+  { value: "480", label: "480p" },
+  { value: "360", label: "360p" },
+  { value: "audio", label: "Audio (MP3)" },
+];
+
 export interface Job {
   id: string;
   name: string;
@@ -33,6 +45,7 @@ export interface Job {
   cookieBrowser: CookieBrowser | null;
   cookieFilePath: string | null;
   defaultFolder: string | null;
+  quality: Quality;
   createdAt: string;
   updatedAt: string;
   /** Aggregates filled in by list/detail endpoints. */
@@ -87,6 +100,7 @@ export interface UpdateJobInput {
   cookieBrowser?: CookieBrowser | null;
   cookieFilePath?: string | null;
   defaultFolder?: string | null;
+  quality?: Quality;
 }
 
 export interface ScanInput {

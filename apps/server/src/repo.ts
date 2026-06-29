@@ -12,6 +12,7 @@ import type {
   DownloadStatus,
   Job,
   Platform,
+  Quality,
   Scan,
   ScanStatus,
   SourceType,
@@ -29,6 +30,7 @@ type JobRow = {
   cookie_browser: string | null;
   cookie_file_path: string | null;
   default_folder: string | null;
+  quality: string | null;
   created_at: string;
   updated_at: string;
   video_count?: number;
@@ -43,6 +45,7 @@ function toJob(r: JobRow): Job {
     cookieBrowser: (r.cookie_browser as CookieBrowser | null) ?? null,
     cookieFilePath: r.cookie_file_path,
     defaultFolder: r.default_folder,
+    quality: (r.quality as Quality) ?? "best",
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     videoCount: r.video_count,
@@ -179,6 +182,7 @@ export const jobs = {
       cookieBrowser?: CookieBrowser | null;
       cookieFilePath?: string | null;
       defaultFolder?: string | null;
+      quality?: Quality;
     },
   ): Job | null {
     const cur = this.get(id);
@@ -192,16 +196,18 @@ export const jobs = {
         patch.cookieFilePath !== undefined ? patch.cookieFilePath : cur.cookieFilePath,
       default_folder:
         patch.defaultFolder !== undefined ? patch.defaultFolder : cur.defaultFolder,
+      quality: patch.quality ?? cur.quality,
     };
     db.prepare(
       `UPDATE jobs SET name=?, cookie_mode=?, cookie_browser=?, cookie_file_path=?,
-       default_folder=?, updated_at=? WHERE id=?`,
+       default_folder=?, quality=?, updated_at=? WHERE id=?`,
     ).run(
       next.name,
       next.cookie_mode,
       next.cookie_browser,
       next.cookie_file_path,
       next.default_folder,
+      next.quality,
       now(),
       id,
     );

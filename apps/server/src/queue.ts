@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import PQueue from "p-queue";
 import { platformLabel, type Platform } from "@vbd/shared";
 import { jobs, videos } from "./repo.js";
@@ -133,15 +135,26 @@ async function runDownload(videoId: string): Promise<void> {
   emitVideoStatus(videoId);
   emitQueueState(video.jobId);
 
+  const tmpDir = path.join(folder, ".vbd-tmp", videoId);
+  try {
+    fs.mkdirSync(tmpDir, { recursive: true });
+  } catch {
+    /* ignore */
+  }
+
   let lastPct = -1;
   const handle = download(
-    video.webpageUrl,
-    folder,
-    video.platform,
     {
-      cookieMode: job.cookieMode,
-      cookieBrowser: job.cookieBrowser,
-      cookieFilePath: job.cookieFilePath,
+      webpageUrl: video.webpageUrl,
+      folder,
+      platform: video.platform,
+      quality: job.quality,
+      tmpDir,
+      cookies: {
+        cookieMode: job.cookieMode,
+        cookieBrowser: job.cookieBrowser,
+        cookieFilePath: job.cookieFilePath,
+      },
     },
     {
       onProgress: (progress, speed, eta) => {
@@ -202,12 +215,32 @@ async function runDownload(videoId: string): Promise<void> {
   } finally {
     activeHandles.delete(videoId);
     currentVideoId = null;
+    // Remove leftover partial/fragment files (no-op dir on success), then the
+    // parent .vbd-tmp if it's now empty.
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmdirSync(path.dirname(tmpDir));
+    } catch {
+      /* ignore (parent not empty / already gone) */
+    }
   }
 
   // Done outside finally so the cooldown is already recorded.
   if (rescheduled) waitForCooldown(videoId, video.platform);
   emitVideoStatus(videoId);
   emitQueueState(video.jobId);
+}
+
+/** Cancel all queued/in-flight downloads of one scan (completed ones are left). */
+export function cancelScanDownloads(scanId: string): number {
+  let n = 0;
+  for (const v of videos.listByScan(scanId)) {
+    if (v.downloadStatus === "downloading" || v.downloadStatus === "queued") {
+      cancelDownload(v.id);
+      n++;
+    }
+  }
+  return n;
 }
 
 /** Cancel a queued or in-flight download. */
