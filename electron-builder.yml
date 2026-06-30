@@ -1,5 +1,5 @@
 appId: com.videobulkdownloader.app
-productName: Video Bulk Downloader
+productName: Jerry Vids Downloader
 directories:
   output: release
 # The Electron main/preload (with the Fastify server) are bundled by esbuild.

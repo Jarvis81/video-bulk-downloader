@@ -40,14 +40,16 @@ export function HistoryPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-1.5 px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <div className="flex items-center gap-1.5 px-1.5 pb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-subtle)]">
         <Clock size={12} /> History
       </div>
 
       {scans.length === 0 ? (
-        <p className="px-2 py-6 text-center text-[11px] text-slate-600">No scans yet.</p>
+        <p className="px-2 py-8 text-center text-[11px] text-[var(--color-text-subtle)]">
+          No scans yet.
+        </p>
       ) : (
-        <ul className="flex flex-col gap-1 overflow-y-auto pr-1">
+        <ul className="flex flex-col gap-1.5 overflow-y-auto pr-0.5">
           {scans.map((s) => {
             const scanning = liveScanId === s.id || s.status === "scanning";
             const active = s.id === activeScanId;
@@ -57,28 +59,27 @@ export function HistoryPanel({
                 <div
                   onClick={() => onSelect(s.id)}
                   title={`${s.sourceUrl}\n${formatDate(s.createdAt)}`}
-                  className={`group relative w-full cursor-pointer rounded-md border px-2 py-1.5 text-left transition ${
+                  className={`group relative w-full cursor-pointer rounded-[var(--radius)] border px-2.5 py-2 text-left transition ${
                     active
-                      ? "border-indigo-500/60 bg-indigo-500/10"
-                      : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-indigo-500/40"
+                      ? "border-[var(--color-accent)] bg-[var(--color-selected)]"
+                      : "border-transparent bg-[var(--color-surface-2)] hover:border-[var(--color-border)]"
                   } ${deleting ? "pointer-events-none opacity-50" : ""}`}
                 >
                   <div className="flex items-center gap-1.5">
                     {scanning ? (
-                      <Loader2 size={12} className="shrink-0 animate-spin text-indigo-400" />
+                      <Loader2 size={12} className="shrink-0 animate-spin text-[var(--color-accent)]" />
                     ) : s.status === "error" ? (
-                      <AlertCircle size={12} className="shrink-0 text-red-400" />
+                      <AlertCircle size={12} className="shrink-0 text-[var(--color-danger)]" />
                     ) : s.status === "canceled" ? (
-                      <Ban size={12} className="shrink-0 text-slate-400" />
+                      <Ban size={12} className="shrink-0 text-[var(--color-text-subtle)]" />
                     ) : (
-                      <CheckCircle2 size={12} className="shrink-0 text-emerald-400" />
+                      <CheckCircle2 size={12} className="shrink-0 text-[var(--color-ok)]" />
                     )}
                     <PlatformBadge platform={s.platform} />
-                    <span className="ml-auto text-[10px] tabular-nums text-slate-500">
+                    <span className="mono ml-auto text-[10px] text-[var(--color-text-subtle)]">
                       {shortTime(s.createdAt)}
                     </span>
 
-                    {/* delete: X → inline confirm (✓ / ✕) */}
                     {confirming === s.id ? (
                       <span className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                         <button
@@ -87,16 +88,16 @@ export function HistoryPanel({
                             setConfirming(null);
                           }}
                           title="Confirm delete"
-                          className="rounded p-0.5 text-red-400 hover:bg-red-500/15"
+                          className="icon-btn size-6 text-[var(--color-danger)]"
                         >
-                          <Check size={12} />
+                          <Check size={13} />
                         </button>
                         <button
                           onClick={() => setConfirming(null)}
                           title="Keep"
-                          className="rounded p-0.5 text-slate-400 hover:bg-[var(--color-surface-2)]"
+                          className="icon-btn size-6"
                         >
-                          <X size={12} />
+                          <X size={13} />
                         </button>
                       </span>
                     ) : (
@@ -106,17 +107,17 @@ export function HistoryPanel({
                           setConfirming(s.id);
                         }}
                         title="Delete scan"
-                        className="rounded p-0.5 text-slate-500 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
+                        className="icon-btn size-6 opacity-0 transition hover:text-[var(--color-danger)] group-hover:opacity-100"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={13} />
                       </button>
                     )}
                   </div>
 
-                  <div className="mt-1 truncate text-[11px] text-slate-300" title={s.sourceUrl}>
+                  <div className="mt-1.5 truncate text-[11px] font-medium text-[var(--color-text)]" title={s.sourceUrl}>
                     {s.sourceUrl.replace(/^https?:\/\/(www\.)?/, "")}
                   </div>
-                  <div className="mt-0.5 text-[10px] text-slate-500">
+                  <div className="mono mt-0.5 text-[10px] text-[var(--color-text-subtle)]">
                     {scanning
                       ? "scanning…"
                       : s.status === "error"
@@ -126,7 +127,6 @@ export function HistoryPanel({
                           } videos`}
                   </div>
 
-                  {/* Re-scan: only on the selected card, when it isn't live-scanning */}
                   {active && !scanning && confirming !== s.id && (
                     <button
                       onClick={(e) => {
@@ -135,7 +135,7 @@ export function HistoryPanel({
                       }}
                       disabled={rescanningId === s.id}
                       title="Run this scan again"
-                      className="mt-1.5 inline-flex items-center gap-1 rounded border border-[var(--color-border)] px-1.5 py-0.5 text-[10px] text-indigo-300 transition hover:bg-[var(--color-surface-2)] disabled:opacity-50"
+                      className="mt-2 inline-flex items-center gap-1 rounded-full bg-[var(--color-surface)] px-2.5 py-1 text-[10px] font-semibold text-[var(--color-accent)] transition hover:bg-[var(--color-accent-soft)] disabled:opacity-50"
                     >
                       {rescanningId === s.id ? (
                         <Loader2 size={11} className="animate-spin" />

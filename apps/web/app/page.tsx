@@ -20,7 +20,7 @@ import {
   updateJob,
 } from "@/lib/api";
 import { useJobStream } from "@/hooks/useJobStream";
-import { TopBar } from "@/components/TopBar";
+import { Sidebar } from "@/components/Sidebar";
 import { CookieSelector } from "@/components/CookieSelector";
 import { QualitySelector } from "@/components/QualitySelector";
 import { SignIn } from "@/components/SignIn";
@@ -51,9 +51,6 @@ function matchesFilter(status: DownloadStatus, f: StatusFilter): boolean {
       return true;
   }
 }
-
-const field =
-  "rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 outline-none focus:border-indigo-500";
 
 export default function WorkspacePage() {
   const qc = useQueryClient();
@@ -299,255 +296,301 @@ export default function WorkspacePage() {
 
   /* --------------------------------- render -------------------------------- */
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <TopBar />
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
 
-      {/* scan bar */}
-      <div className="border-b border-[var(--color-border)] px-4 py-2.5">
-        <div className="mx-auto max-w-7xl">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (jobId) scan.mutate();
-            }}
-            className="flex gap-2"
-          >
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Paste a channel URL (lists all videos) or a single video URL, then Scan"
-              className={`flex-1 ${field} py-2`}
-            />
-            <input
-              value={limit}
-              onChange={(e) => setLimit(e.target.value.replace(/\D/g, ""))}
-              placeholder="Max"
-              title="Max videos to list (blank = all)"
-              className={`w-16 text-center ${field} py-2`}
-            />
-            <button
-              type="submit"
-              disabled={scan.isPending || !url.trim() || !jobId}
-              className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-            >
-              {scan.isPending || isScanning ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : (
-                <Search size={15} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* header + scan */}
+        <header className="shrink-0 px-5 pt-5 sm:px-7">
+          <div className="mx-auto w-full max-w-[1380px]">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h1 className="text-[22px] font-extrabold tracking-tight">Jerry Vids Downloader</h1>
+                <p className="mt-0.5 text-[var(--color-text-muted)]">
+                  Paste a channel or video link — every clip, one click.
+                </p>
+              </div>
+              {job?.defaultFolder && (
+                <button
+                  onClick={changeFolder}
+                  className="btn btn-soft max-w-full px-3 py-2 text-xs"
+                  title="Change download folder"
+                >
+                  <FolderOpen size={14} className="shrink-0" />
+                  <span className="truncate">{job.defaultFolder}</span>
+                </button>
               )}
-              Scan
-            </button>
-            {isScanning && (
-              <button
-                type="button"
-                onClick={() => activeScanId && abort.mutate()}
-                disabled={abort.isPending}
-                title="Stop scanning (keeps videos found so far)"
-                className="inline-flex items-center gap-1.5 rounded-md bg-red-600/90 px-4 py-2 font-medium text-white hover:bg-red-500 disabled:opacity-50"
-              >
-                <Ban size={15} /> Stop
-              </button>
-            )}
-          </form>
+            </div>
 
-          {/* settings strip */}
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
-            {job && <QualitySelector job={job} />}
-            {job && <SignIn job={job} />}
-            {job && <CookieSelector job={job} />}
-            <button
-              onClick={changeFolder}
-              className="inline-flex items-center gap-1 hover:text-slate-200"
-              title="Choose download folder"
-            >
-              <FolderOpen size={13} />
-              {job?.defaultFolder ? (
-                <span className="max-w-[280px] truncate">{job.defaultFolder}</span>
-              ) : (
-                <span>Choose folder… (asked on first download)</span>
-              )}
-            </button>
-            {scan.error && (
-              <span className="text-red-400">{(scan.error as Error).message}</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* cooldown banner */}
-      {cooldowns.length > 0 && (
-        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-xs text-amber-300">
-          <div className="mx-auto flex max-w-7xl items-center gap-2">
-            <Clock size={13} className="shrink-0" />
-            <span className="font-medium">
-              {cooldowns
-                .map((c) => `${platformLabel(c.platform)} paused ~${Math.ceil(c.remainingMs / 60000)}m`)
-                .join(" · ")}
-            </span>
-            <span className="text-amber-300/70">
-              — rate-limited; queued downloads resume automatically. Use cookies (From browser) or
-              switch network/VPN.
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* main + history */}
-      <div className="mx-auto flex w-full max-w-7xl min-h-0 flex-1 gap-4 overflow-hidden px-4 py-3">
-        {/* main column */}
-        <main className="flex min-w-0 flex-1 flex-col">
-          {/* toolbar */}
-          <div className="flex flex-wrap items-center gap-2 pb-2">
-            <input
-              type="checkbox"
-              ref={(el) => {
-                if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected;
+            {/* scan card */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (jobId) scan.mutate();
               }}
-              checked={allFilteredSelected}
-              onChange={(e) => setSelectedForFiltered(e.target.checked)}
-              className="size-3.5 accent-indigo-500"
-              title="Select all (filtered)"
-            />
-            <span className="text-xs text-slate-400">
-              {selectedCount}/{counts.total}
-            </span>
-            <span className="hidden text-[11px] text-slate-600 sm:inline">
-              · {counts.done} done{counts.failed ? ` · ${counts.failed} failed` : ""}
-            </span>
-            <div className="ml-1 flex items-center gap-1 text-[11px] text-slate-400">
-              <button className="hover:text-slate-200" onClick={() => setSelected(new Set())}>
-                None
-              </button>
-              <span className="text-slate-700">|</span>
-              <button
-                className="hover:text-slate-200"
-                title="Select all not-yet-downloaded"
-                onClick={() =>
-                  setSelected(
-                    new Set(filtered.filter((v) => v.downloadStatus !== "completed").map((v) => v.id)),
-                  )
-                }
-              >
-                Not done
-              </button>
-            </div>
-
-            <div className="relative ml-2">
-              <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
+              className="card flex flex-wrap items-center gap-2 p-2 sm:flex-nowrap"
+            >
+              <div className="relative min-w-[200px] flex-1">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-subtle)]"
+                />
+                <input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="Paste a channel URL (lists all videos) or a single video URL"
+                  className="input w-full bg-transparent pl-9"
+                />
+              </div>
               <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Filter…"
-                className={`w-36 pl-6 ${field} py-1`}
+                value={limit}
+                onChange={(e) => setLimit(e.target.value.replace(/\D/g, ""))}
+                placeholder="Max"
+                title="Max videos to list (blank = all)"
+                className="input mono w-20 text-center"
               />
-            </div>
-
-            <div className="flex items-center gap-0.5">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.key}
-                  onClick={() => setStatusFilter(f.key)}
-                  className={`rounded px-1.5 py-0.5 text-[11px] ${
-                    statusFilter === f.key
-                      ? "bg-indigo-600 text-white"
-                      : "text-slate-400 hover:bg-[var(--color-surface-2)]"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="ml-auto flex items-center gap-2">
-              {hasActive && (
-                <button
-                  onClick={() => activeScanId && cancelScan(activeScanId)}
-                  title="Cancel queued + in-progress downloads in this scan"
-                  className="inline-flex items-center gap-1.5 rounded-md bg-red-600/90 px-3 py-1.5 font-medium text-white hover:bg-red-500"
-                >
-                  <Ban size={15} /> Cancel
-                </button>
-              )}
               <button
-                onClick={() =>
-                  download.mutate(videos.filter((v) => selected.has(v.id)).map((v) => v.id))
-                }
-                disabled={download.isPending || selectedCount === 0}
-                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                type="submit"
+                disabled={scan.isPending || !url.trim() || !jobId}
+                className="btn btn-accent px-5 py-2.5"
               >
-                {download.isPending ? (
+                {scan.isPending || isScanning ? (
                   <Loader2 size={15} className="animate-spin" />
                 ) : (
-                  <Download size={15} />
+                  <Search size={15} />
                 )}
-                Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
+                Scan
               </button>
+              {isScanning && (
+                <button
+                  type="button"
+                  onClick={() => activeScanId && abort.mutate()}
+                  disabled={abort.isPending}
+                  title="Stop scanning (keeps videos found so far)"
+                  className="btn btn-danger px-4 py-2.5"
+                >
+                  <Ban size={15} /> Stop
+                </button>
+              )}
+            </form>
+
+            {/* settings strip */}
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
+              {job && <QualitySelector job={job} />}
+              {job && <SignIn job={job} />}
+              {job && <CookieSelector job={job} />}
+              {!job?.defaultFolder && (
+                <button
+                  onClick={changeFolder}
+                  className="inline-flex items-center gap-1 hover:text-[var(--color-text)]"
+                >
+                  <FolderOpen size={13} /> Choose folder… (asked on first download)
+                </button>
+              )}
+              {scan.error && (
+                <span className="text-[var(--color-danger)]">{(scan.error as Error).message}</span>
+              )}
             </div>
           </div>
+        </header>
 
-          {download.error && (
-            <p className="pb-1 text-right text-xs text-red-400">
-              {(download.error as Error).message}
-            </p>
-          )}
-          {activeScan?.status === "error" && (
-            <p className="pb-1 text-xs text-red-400">Scan failed: {activeScan.error}</p>
-          )}
-
-          {/* scrollable list */}
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {isScanning && videos.length === 0 ? (
-              <div className="flex items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] py-10 text-sm text-indigo-300">
-                <Loader2 size={16} className="animate-spin" /> Scanning… {scanFound} found
+        {/* cooldown banner */}
+        {cooldowns.length > 0 && (
+          <div className="px-5 pt-3 sm:px-7">
+            <div className="mx-auto w-full max-w-[1380px]">
+              <div
+                className="flex items-center gap-2 rounded-[var(--radius)] border px-3 py-2 text-xs"
+                style={{
+                  color: "var(--color-warn)",
+                  borderColor: "color-mix(in srgb, var(--color-warn) 35%, transparent)",
+                  backgroundColor: "color-mix(in srgb, var(--color-warn) 12%, transparent)",
+                }}
+              >
+                <Clock size={14} className="shrink-0" />
+                <span className="font-semibold">
+                  {cooldowns
+                    .map((c) => `${platformLabel(c.platform)} paused ~${Math.ceil(c.remainingMs / 60000)}m`)
+                    .join(" · ")}
+                </span>
+                <span className="opacity-80">
+                  — rate-limited; queued downloads resume automatically.
+                </span>
               </div>
-            ) : (
-              <>
-                {isScanning && (
-                  <div className="mb-2 flex items-center gap-2 rounded-md bg-indigo-500/10 px-3 py-1.5 text-xs text-indigo-300">
-                    <Loader2 size={13} className="animate-spin" /> Scanning… {scanFound} found
-                    (you can already select &amp; download, or press Stop)
-                  </div>
-                )}
-                <VideoList
-                  videos={filtered}
-                  selected={selected}
-                  onToggle={(vid) =>
-                    setSelected((prev) => {
-                      const next = new Set(prev);
-                      next.has(vid) ? next.delete(vid) : next.add(vid);
-                      return next;
-                    })
-                  }
-                  onCancel={(vid) => cancelDownload(vid)}
-                  onRetry={(vid) => retryDownload(vid)}
-                  onDownloadOne={(vid) => download.mutate([vid])}
-                />
-              </>
-            )}
+            </div>
           </div>
-        </main>
+        )}
 
-        {/* history */}
-        <aside className="hidden w-72 shrink-0 overflow-hidden md:flex md:flex-col">
-          <HistoryPanel
-            scans={scans}
-            activeScanId={activeScanId}
-            liveScanId={liveScanId}
-            onSelect={(id) => selectScan(id)}
-            onRescan={(s) => rescan.mutate(s)}
-            onDelete={(id) => del.mutate(id)}
-            rescanningId={rescan.isPending ? (rescan.variables as Scan).id : null}
-            deletingId={del.isPending ? (del.variables as string) : null}
-          />
-        </aside>
+        {/* main + history */}
+        <div className="mx-auto flex min-h-0 w-full max-w-[1380px] flex-1 gap-5 px-5 pb-5 pt-3 sm:px-7">
+          {/* main card */}
+          <main className="card flex min-w-0 flex-1 flex-col overflow-hidden">
+            {/* toolbar */}
+            <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-3.5 py-2.5">
+              <input
+                type="checkbox"
+                ref={(el) => {
+                  if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected;
+                }}
+                checked={allFilteredSelected}
+                onChange={(e) => setSelectedForFiltered(e.target.checked)}
+                className="size-3.5 accent-[var(--color-accent)]"
+                title="Select all (filtered)"
+              />
+              <span className="mono text-xs text-[var(--color-text-muted)]">
+                {selectedCount}/{counts.total}
+              </span>
+              <span className="hidden text-[11px] text-[var(--color-text-subtle)] sm:inline">
+                · {counts.done} done{counts.failed ? ` · ${counts.failed} failed` : ""}
+              </span>
+              <div className="ml-1 flex items-center gap-1.5 text-[11px]">
+                <button
+                  className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                  onClick={() => setSelected(new Set())}
+                >
+                  None
+                </button>
+                <span className="text-[var(--color-border)]">|</span>
+                <button
+                  className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                  title="Select all not-yet-downloaded"
+                  onClick={() =>
+                    setSelected(
+                      new Set(
+                        filtered.filter((v) => v.downloadStatus !== "completed").map((v) => v.id),
+                      ),
+                    )
+                  }
+                >
+                  Not done
+                </button>
+              </div>
+
+              <div className="relative ml-2">
+                <Search
+                  size={12}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-subtle)]"
+                />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Filter…"
+                  className="input w-40 py-1.5 pl-7 text-xs"
+                />
+              </div>
+
+              <div className="flex items-center gap-1">
+                {FILTERS.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setStatusFilter(f.key)}
+                    className={`chip px-2.5 py-1 text-[11px] font-medium ${
+                      statusFilter === f.key ? "chip-active" : ""
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="ml-auto flex items-center gap-2">
+                {hasActive && (
+                  <button
+                    onClick={() => activeScanId && cancelScan(activeScanId)}
+                    title="Cancel queued + in-progress downloads in this scan"
+                    className="btn btn-danger px-3 py-2 text-xs"
+                  >
+                    <Ban size={14} /> Cancel
+                  </button>
+                )}
+                <button
+                  onClick={() =>
+                    download.mutate(videos.filter((v) => selected.has(v.id)).map((v) => v.id))
+                  }
+                  disabled={download.isPending || selectedCount === 0}
+                  className="btn btn-accent px-4 py-2 text-xs"
+                >
+                  {download.isPending ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Download size={14} />
+                  )}
+                  Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
+                </button>
+              </div>
+            </div>
+
+            {(download.error || activeScan?.status === "error") && (
+              <div className="border-b border-[var(--color-border)] px-3.5 py-1.5 text-xs text-[var(--color-danger)]">
+                {download.error
+                  ? (download.error as Error).message
+                  : `Scan failed: ${activeScan?.error}`}
+              </div>
+            )}
+
+            {/* scrollable list */}
+            <div className="min-h-0 flex-1 overflow-y-auto p-2">
+              {isScanning && videos.length === 0 ? (
+                <div
+                  className="flex h-full items-center justify-center gap-2 text-sm"
+                  style={{ color: "var(--color-accent)" }}
+                >
+                  <Loader2 size={16} className="animate-spin" /> Scanning…{" "}
+                  <span className="mono">{scanFound}</span> found
+                </div>
+              ) : (
+                <>
+                  {isScanning && (
+                    <div
+                      className="mb-2 flex items-center gap-2 rounded-[var(--radius)] bg-[var(--color-accent-soft)] px-3 py-1.5 text-xs"
+                      style={{ color: "var(--color-accent)" }}
+                    >
+                      <Loader2 size={13} className="animate-spin" /> Scanning…{" "}
+                      <span className="mono">{scanFound}</span> found — select &amp; download, or press Stop
+                    </div>
+                  )}
+                  <VideoList
+                    videos={filtered}
+                    selected={selected}
+                    onToggle={(vid) =>
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        next.has(vid) ? next.delete(vid) : next.add(vid);
+                        return next;
+                      })
+                    }
+                    onCancel={(vid) => cancelDownload(vid)}
+                    onRetry={(vid) => retryDownload(vid)}
+                    onDownloadOne={(vid) => download.mutate([vid])}
+                  />
+                </>
+              )}
+            </div>
+          </main>
+
+          {/* history */}
+          <aside className="hidden w-72 shrink-0 md:flex">
+            <div className="card flex w-full flex-col overflow-hidden p-2">
+              <HistoryPanel
+                scans={scans}
+                activeScanId={activeScanId}
+                liveScanId={liveScanId}
+                onSelect={(id) => selectScan(id)}
+                onRescan={(s) => rescan.mutate(s)}
+                onDelete={(id) => del.mutate(id)}
+                rescanningId={rescan.isPending ? (rescan.variables as Scan).id : null}
+                deletingId={del.isPending ? (del.variables as string) : null}
+              />
+            </div>
+          </aside>
+        </div>
+
+        {wsQuery.error && (
+          <p className="px-7 pb-2 text-xs text-[var(--color-danger)]">
+            Cannot reach the backend ({(wsQuery.error as Error).message}). Is the server running on
+            port 4319?
+          </p>
+        )}
       </div>
-
-      {wsQuery.error && (
-        <p className="px-4 pb-2 text-xs text-red-400">
-          Cannot reach the backend ({(wsQuery.error as Error).message}). Is the server running
-          on port 4319?
-        </p>
-      )}
     </div>
   );
 }

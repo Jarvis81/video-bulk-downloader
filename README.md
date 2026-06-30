@@ -1,4 +1,4 @@
-# Video Bulk Downloader
+# Jerry Vids Downloader
 
 Bulk-download videos from a YouTube, TikTok, Douyin, or Bilibili channel — or from a
 single video URL. Paste a link, the app lists every video with thumbnails, you select
@@ -109,6 +109,12 @@ to ship a standalone app that installs and launches from the Start menu, with no
 pnpm dist:app              # full build -> release/<product>-<version>-setup.exe
 pnpm dist:app --skip-f2    # skip the optional Douyin (f2) engine
 ```
+
+End users need nothing pre-installed. The installer bundles every runtime: Electron (with its
+own Node), ffmpeg, BBDown (a self-contained executable — no .NET required), and f2 (built with
+PyInstaller, so its Python interpreter is embedded — no Python required). Python >= 3.10 is only
+needed on the machine that *builds* f2; if that machine lacks it, f2 is simply omitted and the
+installed app falls back to yt-dlp for Douyin — it still runs fine for everyone.
 
 For day-to-day work you can still run the lower-level scripts directly:
 

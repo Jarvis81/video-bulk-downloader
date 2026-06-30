@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogIn, Loader2 } from "lucide-react";
+import { Check, LogIn, Loader2 } from "lucide-react";
 import type { Job, Platform } from "@vbd/shared";
 import { platformLabel } from "@vbd/shared";
 import { updateJob } from "@/lib/api";
@@ -51,24 +51,34 @@ export function SignIn({ job }: { job: Job }) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+    <div className="flex flex-wrap items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
       <span className="inline-flex items-center gap-1">
         <LogIn size={13} /> Sign in:
       </span>
-      {PLATFORMS.map((p) => (
-        <button
-          key={p}
-          onClick={() => login(p)}
-          disabled={busy !== null}
-          title={`Open ${platformLabel(p)} login — log in, then close that window`}
-          className="inline-flex items-center gap-1 rounded border border-[var(--color-border)] px-1.5 py-0.5 hover:bg-[var(--color-surface-2)] disabled:opacity-50"
-        >
-          {busy === p && <Loader2 size={11} className="animate-spin" />}
-          {platformLabel(p)}
-          {done === p ? " ✓" : ""}
-        </button>
-      ))}
-      {error && <span className="text-amber-400">{error}</span>}
+      {PLATFORMS.map((p) => {
+        const signedIn = done === p;
+        return (
+          <button
+            key={p}
+            onClick={() => login(p)}
+            disabled={busy !== null}
+            title={`Open ${platformLabel(p)} login — log in, then close that window`}
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium transition disabled:opacity-50 ${
+              signedIn
+                ? "bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
+                : "bg-[var(--color-surface-2)] text-[var(--color-text)] hover:bg-[var(--color-border)]"
+            }`}
+          >
+            {busy === p ? (
+              <Loader2 size={11} className="animate-spin" />
+            ) : signedIn ? (
+              <Check size={12} />
+            ) : null}
+            {platformLabel(p)}
+          </button>
+        );
+      })}
+      {error && <span className="text-[var(--color-danger)]">{error}</span>}
     </div>
   );
 }

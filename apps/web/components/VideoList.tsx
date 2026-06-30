@@ -15,9 +15,6 @@ interface Props {
   onDownloadOne: (id: string) => void;
 }
 
-const iconBtn =
-  "inline-flex items-center justify-center rounded p-1 text-slate-400 hover:bg-[var(--color-surface-2)] hover:text-slate-200";
-
 export function VideoList({
   videos,
   selected,
@@ -28,29 +25,29 @@ export function VideoList({
 }: Props) {
   if (videos.length === 0) {
     return (
-      <p className="rounded-lg border border-[var(--color-border)] px-4 py-8 text-center text-xs text-slate-500">
-        No videos. Paste a channel or video URL above and click Scan.
+      <p className="px-4 py-12 text-center text-xs text-[var(--color-text-subtle)]">
+        No videos yet. Paste a channel or video URL above and click Scan.
       </p>
     );
   }
 
   return (
-    <ul className="divide-y divide-[var(--color-border)] overflow-hidden rounded-lg border border-[var(--color-border)]">
+    <ul className="flex flex-col gap-1">
       {videos.map((v) => {
         const active = v.downloadStatus === "downloading" || v.downloadStatus === "queued";
         const isSel = selected.has(v.id);
         return (
           <li
             key={v.id}
-            className={`flex items-center gap-2.5 px-3 py-1.5 ${
-              isSel ? "bg-indigo-500/5" : "hover:bg-[var(--color-surface)]"
+            className={`flex items-center gap-3 rounded-[var(--radius)] px-2.5 py-2 transition ${
+              isSel ? "bg-[var(--color-selected)]" : "hover:bg-[var(--color-surface-2)]"
             }`}
           >
             <input
               type="checkbox"
               checked={isSel}
               onChange={() => onToggle(v.id)}
-              className="size-3.5 shrink-0 accent-indigo-500"
+              className="size-3.5 shrink-0 accent-[var(--color-accent)]"
             />
             <Thumb video={v} />
 
@@ -59,26 +56,33 @@ export function VideoList({
                 href={v.webpageUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="block truncate text-[13px] font-medium leading-tight hover:text-indigo-300"
+                className="block truncate text-[13px] font-semibold leading-tight hover:text-[var(--color-accent)]"
                 title={v.title}
               >
                 {v.title}
               </a>
-              <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+              <div className="mt-1 flex items-center gap-2">
                 <PlatformBadge platform={v.platform} />
-                {v.uploader && <span className="truncate">{v.uploader}</span>}
+                {v.uploader && (
+                  <span className="truncate text-[11px] text-[var(--color-text-muted)]">
+                    {v.uploader}
+                  </span>
+                )}
               </div>
 
               {active && (
-                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
                   <div
-                    className="h-full bg-indigo-500 transition-all"
+                    className="h-full rounded-full bg-[var(--color-accent)] transition-all"
                     style={{ width: `${Math.max(3, v.progress)}%` }}
                   />
                 </div>
               )}
               {v.downloadStatus === "error" && v.error && (
-                <div className="mt-0.5 truncate text-[11px] text-red-400" title={v.error}>
+                <div
+                  className="mt-1 truncate text-[11px] text-[var(--color-danger)]"
+                  title={v.error}
+                >
                   {v.error}
                 </div>
               )}
@@ -87,31 +91,33 @@ export function VideoList({
             <div className="flex w-32 shrink-0 flex-col items-end leading-tight">
               <StatusBadge status={v.downloadStatus} />
               {v.downloadStatus === "downloading" ? (
-                <span className="text-[10px] tabular-nums text-slate-400">
+                <span className="mono text-[10px] text-[var(--color-text-muted)]">
                   {v.progress.toFixed(0)}%{v.speed ? ` · ${v.speed}` : ""}
                   {v.eta ? ` · ${v.eta}` : ""}
                 </span>
               ) : v.downloadStatus === "completed" && v.filesize ? (
-                <span className="text-[10px] text-slate-500">{formatBytes(v.filesize)}</span>
+                <span className="mono text-[10px] text-[var(--color-text-subtle)]">
+                  {formatBytes(v.filesize)}
+                </span>
               ) : null}
             </div>
 
-            <div className="flex w-7 shrink-0 justify-end">
+            <div className="flex w-8 shrink-0 justify-end">
               {active ? (
-                <button onClick={() => onCancel(v.id)} className={iconBtn} title="Cancel">
-                  <X size={14} />
+                <button onClick={() => onCancel(v.id)} className="icon-btn size-7" title="Cancel">
+                  <X size={15} />
                 </button>
               ) : v.downloadStatus === "error" || v.downloadStatus === "canceled" ? (
-                <button onClick={() => onRetry(v.id)} className={iconBtn} title="Retry">
-                  <RotateCw size={14} />
+                <button onClick={() => onRetry(v.id)} className="icon-btn size-7" title="Retry">
+                  <RotateCw size={15} />
                 </button>
               ) : (
                 <button
                   onClick={() => onDownloadOne(v.id)}
-                  className={iconBtn}
+                  className="icon-btn size-7"
                   title={v.downloadStatus === "completed" ? "Download again" : "Download"}
                 >
-                  <Download size={14} />
+                  <Download size={15} />
                 </button>
               )}
             </div>

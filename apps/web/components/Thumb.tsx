@@ -11,7 +11,7 @@ export function Thumb({ video }: { video: Video }) {
   const url = thumbUrl(video);
 
   return (
-    <div className="relative aspect-video w-[104px] shrink-0 overflow-hidden rounded bg-[var(--color-surface-2)]">
+    <div className="relative aspect-video w-[112px] shrink-0 overflow-hidden rounded-[12px] bg-[var(--color-surface-2)]">
       {url && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -22,7 +22,7 @@ export function Thumb({ video }: { video: Video }) {
           onError={() => setFailed(true)}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-slate-600">
+        <div className="flex h-full w-full items-center justify-center text-[var(--color-text-subtle)]">
           <Film size={18} />
         </div>
       )}

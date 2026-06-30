@@ -5,8 +5,7 @@ import { Settings2 } from "lucide-react";
 import { QUALITIES, type Job, type Quality } from "@vbd/shared";
 import { updateJob } from "@/lib/api";
 
-const field =
-  "rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-xs outline-none focus:border-indigo-500";
+const field = "input py-1.5 text-xs";
 
 export function QualitySelector({ job }: { job: Job }) {
   const qc = useQueryClient();
@@ -16,7 +15,7 @@ export function QualitySelector({ job }: { job: Job }) {
   });
 
   return (
-    <label className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+    <label className="inline-flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
       <Settings2 size={13} /> Quality:
       <select
         value={job.quality}

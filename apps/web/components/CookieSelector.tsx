@@ -6,8 +6,7 @@ import { updateJob } from "@/lib/api";
 
 const BROWSERS: CookieBrowser[] = ["chrome", "edge", "firefox", "brave", "opera", "vivaldi"];
 
-const field =
-  "rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-xs outline-none focus:border-indigo-500";
+const field = "input py-1.5 text-xs";
 
 export function CookieSelector({ job }: { job: Job }) {
   const qc = useQueryClient();
@@ -18,7 +17,7 @@ export function CookieSelector({ job }: { job: Job }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-slate-400">Cookies:</span>
+      <span className="text-xs text-[var(--color-text-muted)]">Cookies:</span>
       <select
         value={job.cookieMode}
         onChange={(e) => mutate.mutate({ cookieMode: e.target.value as CookieMode })}

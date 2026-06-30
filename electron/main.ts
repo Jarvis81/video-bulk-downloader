@@ -106,7 +106,7 @@ function createWindow(port: number): void {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
-    backgroundColor: "#0b0e14",
+    backgroundColor: "#e9eef0",
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),

@@ -1,43 +1,252 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #0b0e14;
-  --color-surface: #131823;
-  --color-surface-2: #1b2230;
-  --color-border: #273044;
-  --color-accent: #6366f1;
-  --color-accent-fg: #ffffff;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jbmono), ui-monospace, "SFMono-Regular", monospace;
 }
+
+/* ============================== design tokens ============================== */
+/* Light is the default (mirrors the reference); dark is a cohesive teal-charcoal
+   variant. Components reference these via arbitrary utilities, e.g.
+   bg-[var(--color-surface)] / text-[var(--color-text-muted)]. Kept unlayered so
+   the variables always resolve regardless of cascade layers. */
 
 :root {
+  color-scheme: light;
+
+  --color-bg: #e9eef0;
+  --color-surface: #ffffff;
+  --color-surface-2: #eef2f4;
+  --color-border: #e4e9ec;
+
+  --color-text: #15313a;
+  --color-text-muted: #5b6c73;
+  --color-text-subtle: #93a1a8;
+
+  --color-accent: #0f877c;
+  --color-accent-hover: #0b6c63;
+  --color-accent-strong: #0a4a45;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: #d8efeb;
+  --color-selected: #e8f6f2;
+
+  --color-ok: #0e9e6e;
+  --color-warn: #b9770f;
+  --color-danger: #d6453d;
+
+  --ring: 0 0 0 3px rgba(15, 135, 124, 0.25);
+  --shadow-card: 0 1px 2px rgba(21, 49, 58, 0.05), 0 12px 28px -14px rgba(21, 49, 58, 0.2);
+  --shadow-pop: 0 10px 34px -10px rgba(21, 49, 58, 0.28);
+
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 18px;
+}
+
+[data-theme="dark"] {
   color-scheme: dark;
+
+  --color-bg: #0b1413;
+  --color-surface: #111d1b;
+  --color-surface-2: #182624;
+  --color-border: #243330;
+
+  --color-text: #e8f1ee;
+  --color-text-muted: #9cb0ab;
+  --color-text-subtle: #6a7d78;
+
+  --color-accent: #22c2ae;
+  --color-accent-hover: #34d3bf;
+  --color-accent-strong: #7fece0;
+  --color-accent-fg: #04231f;
+  --color-accent-soft: rgba(34, 194, 174, 0.14);
+  --color-selected: rgba(34, 194, 174, 0.09);
+
+  --color-ok: #35d39d;
+  --color-warn: #e3b341;
+  --color-danger: #f77066;
+
+  --ring: 0 0 0 3px rgba(34, 194, 174, 0.32);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 14px 34px -16px rgba(0, 0, 0, 0.65);
+  --shadow-pop: 0 10px 36px -10px rgba(0, 0, 0, 0.7);
 }
 
-html,
-body {
-  background-color: var(--color-bg);
-  color: #e6e9ef;
-  -webkit-font-smoothing: antialiased;
+/* ================================= base =================================== */
+
+@layer base {
+  html,
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Atmospheric, low-key background wash so the app reads as designed, not flat. */
+  body {
+    min-height: 100dvh;
+    background-image:
+      radial-gradient(1100px 560px at 100% -12%, rgba(15, 135, 124, 0.07), transparent 60%),
+      radial-gradient(820px 480px at -6% -4%, rgba(15, 135, 124, 0.05), transparent 55%);
+    background-attachment: fixed;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  [data-theme="dark"] body {
+    background-image:
+      radial-gradient(1100px 600px at 100% -12%, rgba(34, 194, 174, 0.1), transparent 60%),
+      radial-gradient(820px 520px at -6% -4%, rgba(34, 194, 174, 0.06), transparent 55%);
+  }
+
+  input,
+  select,
+  button,
+  textarea {
+    font: inherit;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
 }
 
-body {
-  /* Denser baseline: 13px so the app reads like a tool, not a marketing page. */
-  font-size: 13px;
-  line-height: 1.45;
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
-}
+/* =============================== components ================================ */
+/* In @layer components so Tailwind utilities (padding, width, text size, …)
+   always override these — e.g. `pl-9` on top of `.input`. */
 
-/* Compact native controls to match the dense layout. */
-input,
-select,
-button {
-  font-size: 13px;
-}
+@layer components {
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
 
-/* Thin custom scrollbars */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
+
+  .input {
+    background-color: var(--color-surface-2);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    padding: 0.5rem 0.75rem;
+    color: var(--color-text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+  }
+  .input::placeholder {
+    color: var(--color-text-subtle);
+  }
+  .input:focus {
+    border-color: var(--color-accent);
+    box-shadow: var(--ring);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.15s, color 0.15s, box-shadow 0.15s, opacity 0.15s, transform 0.05s;
+    cursor: pointer;
+  }
+  .btn:active {
+    transform: translateY(0.5px);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-accent {
+    background-color: var(--color-accent);
+    color: var(--color-accent-fg);
+  }
+  .btn-accent:not(:disabled):hover {
+    background-color: var(--color-accent-hover);
+  }
+
+  .btn-soft {
+    background-color: var(--color-surface-2);
+    color: var(--color-text);
+  }
+  .btn-soft:not(:disabled):hover {
+    background-color: var(--color-border);
+  }
+
+  .btn-danger {
+    background-color: var(--color-danger);
+    color: #fff;
+  }
+  .btn-danger:not(:disabled):hover {
+    filter: brightness(1.06);
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-subtle);
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .icon-btn:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-text);
+  }
+
+  .chip {
+    border-radius: 999px;
+    color: var(--color-text-muted);
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .chip:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-text);
+  }
+  .chip-active,
+  .chip-active:hover {
+    background-color: var(--color-accent);
+    color: var(--color-accent-fg);
+  }
+
+  .rail-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    color: var(--color-text-subtle);
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .rail-item:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-text);
+  }
+  .rail-item-active {
+    background-color: var(--color-accent-strong);
+    color: #fff;
+  }
+  [data-theme="dark"] .rail-item-active {
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
 }
