@@ -118,7 +118,7 @@ async function runScan(
       const tip =
         scanRow.platform === "bilibili"
           ? "If not signed in, use Sign in; if already signed in, this IP is flagged — wait 15–60 min or switch network/VPN."
-          : "Set Cookies = From browser, or switch network/VPN.";
+          : "Use Sign in for this platform, or switch network/VPN.";
       message =
         `${platformLabel(scanRow.platform)} blocked this request (rate-limit). ` +
         `Pausing this platform ~${formatRemaining(until - Date.now())}. ${tip}`;

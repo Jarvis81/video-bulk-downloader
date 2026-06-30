@@ -6,6 +6,8 @@ directories:
 # Only the native module (better-sqlite3) is shipped as real node_modules.
 files:
   - electron/dist/**/*
+  # Never ship sourcemaps (they would undo minification / leak source).
+  - "!electron/dist/**/*.map"
   - package.json
   - "node_modules/better-sqlite3/**/*"
   - "node_modules/bindings/**/*"
@@ -20,14 +22,28 @@ extraResources:
   - from: apps/web/out
     to: web
     filter: ["**/*"]
+  # App icon, also used at runtime for the window/taskbar (BrowserWindow icon).
+  - from: build/icon.ico
+    to: icon.ico
+# Harden the Electron runtime via @electron/fuses (applied in electron/afterPack.cjs,
+# since electron-builder 25 has no native `electronFuses` config).
+afterPack: electron/afterPack.cjs
 win:
+  icon: build/icon.ico
+  # Two artifacts: an NSIS installer and a single portable .exe (same protected
+  # app contents — the format doesn't change reverse-engineering exposure).
   target:
     - nsis
+    - portable
   # We don't code-sign; skipping sign+rcedit avoids the winCodeSign download whose
-  # macOS symlinks can't extract on Windows without Developer Mode/admin.
+  # macOS symlinks can't extract on Windows without Developer Mode/admin. (Side
+  # effect: the raw app .exe keeps the default icon; the installer, portable exe,
+  # and the running window/taskbar icon are still branded.)
   signAndEditExecutable: false
-  artifactName: ${productName}-${version}-setup.${ext}
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup.${ext}
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}

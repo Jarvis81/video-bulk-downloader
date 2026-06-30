@@ -102,7 +102,7 @@ export function registerRoutes(app: FastifyInstance): void {
       return reply.code(429).send({
         error: `${platformLabel(platform)} is cooling down (rate-limited). Try again in ~${formatRemaining(
           rem,
-        )}, or set Cookies (From browser) / switch network.`,
+        )}, or Sign in / switch network.`,
       });
     }
     try {

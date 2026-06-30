@@ -2,8 +2,12 @@
 // installed and launched from the Start menu without a terminal or the dev
 // toolchain.
 //
-//   pnpm dist:app            full build
-//   pnpm dist:app --skip-f2  skip the optional Douyin (f2) engine
+//   pnpm dist:app                 full build
+//   pnpm dist:app --skip-f2       skip the optional Douyin (f2) engine
+//   VBD_OBFUSCATE=0 pnpm dist:app build without obfuscating main.cjs
+//
+// The release build is minified, has NO sourcemaps, and obfuscates the Electron
+// main bundle to deter reverse-engineering.
 //
 // Steps:
 //   1. Fetch binaries (yt-dlp, ffmpeg, BBDown) into ./bin   (idempotent)
@@ -76,20 +80,25 @@ step("3/5 Rebuilding better-sqlite3 for the Electron ABI");
 run("pnpm", ["app:rebuild"]);
 
 // 4 + 5. `pnpm dist` chains app:build (web export + electron bundle) and
-// electron-builder (with code-signing discovery disabled).
+// electron-builder (with code-signing discovery disabled). VBD_RELEASE is inherited
+// by the child build.mjs so the main bundle is minified + obfuscated.
+process.env.VBD_RELEASE = "1";
 step("4/5 + 5/5 Building and packaging the installer");
 run("pnpm", ["dist"]);
 
-// Report the artifact.
+// Report the artifacts (NSIS installer + portable .exe).
 step("Done");
 const releaseDir = path.join(ROOT, "release");
-const installer = fs.existsSync(releaseDir)
-  ? fs.readdirSync(releaseDir).find((f) => /setup\.exe$/i.test(f))
-  : null;
-if (installer) {
-  console.log(`Installer: ${path.join(releaseDir, installer)}`);
+const exes = fs.existsSync(releaseDir)
+  ? fs.readdirSync(releaseDir).filter((f) => f.toLowerCase().endsWith(".exe"))
+  : [];
+if (exes.length) {
+  console.log("Send one of these to users:");
+  for (const f of exes) {
+    const kind = /portable/i.test(f) ? "portable (run directly)" : "installer";
+    console.log(`  ${path.join(releaseDir, f)}   [${kind}]`);
+  }
 } else {
   console.log("Build complete — see the release/ folder.");
 }
-console.log("Install it once; the app then launches from the Start menu / desktop shortcut.");
 console.log("Note: the better-sqlite3 ABI is now set for Electron. For web dev, run `pnpm rebuild:node`.");

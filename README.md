@@ -17,7 +17,7 @@ Runs as a local web app, or as a packaged Windows desktop app built on Electron.
 - Sequential download queue with per-item cancel, retry-with-backoff, and isolated temp files.
 - Per-platform request pacing and an adaptive cooldown that pauses a blocked platform and
   resumes automatically.
-- Authentication via embedded login (desktop) or cookies (browser export / cookies.txt).
+- Authentication via embedded login (desktop) — cookies are captured and applied automatically.
 - Scan history you can reload, re-scan, or delete; in-progress scans can be stopped.
 
 ## Supported platforms
@@ -106,9 +106,27 @@ optional Douyin engine, sets the correct native-module ABI, then packages everyt
 to ship a standalone app that installs and launches from the Start menu, with no terminal:
 
 ```bash
-pnpm dist:app              # full build -> release/<product>-<version>-setup.exe
+pnpm dist:app              # full build
 pnpm dist:app --skip-f2    # skip the optional Douyin (f2) engine
 ```
+
+This produces two artifacts in `release/` — send users whichever you prefer (both wrap the
+same protected app):
+
+- `Jerry Vids Downloader-<version>-setup.exe` — NSIS installer (installs + Start-menu shortcut)
+- `Jerry Vids Downloader-<version>-portable.exe` — single portable executable (run directly)
+
+### Source protection
+
+Release builds are minified with sourcemaps disabled, and the Electron main bundle is
+obfuscated (the renderer is minified). The packaged binary also has Electron fuses flipped
+(`electron/afterPack.cjs`): `RunAsNode`/Node CLI inspect/`NODE_OPTIONS` are disabled so it
+can't be relaunched as a plain Node process to dump the app, `OnlyLoadAppFromAsar` blocks
+swapping in an edited app folder, and the cookie store is encrypted at rest.
+
+This meaningfully deters inspection but is **not unbreakable** — like any JavaScript/Electron
+app, a determined attacker can still reverse it. Disable obfuscation with `VBD_OBFUSCATE=0` if
+you need to debug a packaged build.
 
 End users need nothing pre-installed. The installer bundles every runtime: Electron (with its
 own Node), ffmpeg, BBDown (a self-contained executable — no .NET required), and f2 (built with
@@ -134,7 +152,8 @@ Native module note: `better-sqlite3` is compiled per runtime. `pnpm dist:app` an
    Scan. Results stream in live and appear in the History panel.
 2. Select videos (or use the select helpers) and click Download. Choose a target folder
    once; later downloads reuse it. Files are saved into that folder, named by title and id.
-3. For private or region-restricted content, sign in (desktop) or provide cookies (web).
+3. For private or region-restricted content, use the Sign in buttons; cookies are then applied
+   automatically.
 4. Use the History panel to reload, re-scan, or delete a past scan. Stop an in-progress scan
    with the Stop button.
 
@@ -143,10 +162,11 @@ Native module note: `better-sqlite3` is compiled per runtime. `pnpm dist:app` an
 Some content requires a logged-in session — notably Douyin, and region- or age-restricted
 Bilibili and TikTok.
 
-- Desktop: use Sign in. A login window opens; after you log in and close it, the session
-  cookies are saved. The check mark appears only when a real session cookie is captured;
-  anonymous cookies do not count.
-- Web: choose "From browser", or point to an exported `cookies.txt` file.
+Use the **Sign in** buttons in the settings bar. A login window opens; after you log in and
+close it, the session cookies are captured and used automatically for that platform. The check
+mark appears only when a real session cookie is found (anonymous cookies do not count). There is
+no cookie mode to choose — without a sign-in the app simply runs without cookies, and a scan that
+needs login will tell you to sign in. (Sign in is available in the desktop build.)
 
 ## Rate limiting
 

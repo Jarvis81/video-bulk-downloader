@@ -181,8 +181,7 @@ export async function buildCookieHeader(
             : "no logged-in cookie found (check you're logged in to the right browser profile)";
       throw new Error(
         `Couldn't read ${cookies.cookieBrowser} login cookies (${why}). ` +
-          `Fully quit ${cookies.cookieBrowser} and retry, or export a cookies.txt ` +
-          `(“Get cookies.txt LOCALLY” extension) and set Cookies = “cookies.txt file”.`,
+          `Use “Sign in: Bilibili” instead, then scan again.`,
       );
     }
     parts.push(c);

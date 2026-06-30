@@ -21,7 +21,6 @@ import {
 } from "@/lib/api";
 import { useJobStream } from "@/hooks/useJobStream";
 import { Sidebar } from "@/components/Sidebar";
-import { CookieSelector } from "@/components/CookieSelector";
 import { QualitySelector } from "@/components/QualitySelector";
 import { SignIn } from "@/components/SignIn";
 import { VideoList } from "@/components/VideoList";
@@ -378,7 +377,6 @@ export default function WorkspacePage() {
             <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
               {job && <QualitySelector job={job} />}
               {job && <SignIn job={job} />}
-              {job && <CookieSelector job={job} />}
               {!job?.defaultFolder && (
                 <button
                   onClick={changeFolder}

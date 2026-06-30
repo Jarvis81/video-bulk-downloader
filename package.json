@@ -1,12 +1,13 @@
 {
   "name": "video-bulk-downloader",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Bulk-download videos from a TikTok/Douyin/Bilibili/YouTube channel or single-video URL.",
   "main": "electron/dist/main.cjs",
   "scripts": {
     "setup": "node scripts/fetch-binaries.mjs",
     "build:f2": "node scripts/build-f2.mjs",
+    "build:icon": "node scripts/make-icon.mjs",
     "dev": "pnpm --parallel --filter @vbd/server --filter @vbd/web dev",
     "dev:server": "pnpm --filter @vbd/server dev",
     "dev:web": "pnpm --filter @vbd/web dev",
@@ -34,6 +35,7 @@
     "better-sqlite3": "^11.7.0"
   },
   "devDependencies": {
+    "@electron/fuses": "^1.8.0",
     "@electron/rebuild": "^3.7.1",
     "@types/node": "^22.10.2",
     "@vbd/server": "workspace:*",
@@ -42,6 +44,8 @@
     "electron": "^33.3.0",
     "electron-builder": "^25.1.8",
     "esbuild": "^0.24.2",
+    "javascript-obfuscator": "^4.1.1",
+    "png-to-ico": "^2.1.0",
     "typescript": "^5.6.3"
   }
 }

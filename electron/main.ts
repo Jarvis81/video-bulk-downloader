@@ -16,6 +16,11 @@ function webDir(): string {
     ? path.join(process.cwd(), "apps", "web", "out")
     : path.join(process.resourcesPath, "web");
 }
+function iconPath(): string {
+  return isDev
+    ? path.join(process.cwd(), "build", "icon.ico")
+    : path.join(process.resourcesPath, "icon.ico");
+}
 
 /* --------------------------------- cookies -------------------------------- */
 
@@ -103,11 +108,13 @@ function loginAndCaptureCookies(platform: Platform): Promise<LoginResult> {
 /* --------------------------------- window --------------------------------- */
 
 function createWindow(port: number): void {
+  const icon = iconPath();
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
     backgroundColor: "#e9eef0",
     autoHideMenuBar: true,
+    ...(fs.existsSync(icon) ? { icon } : {}),
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
