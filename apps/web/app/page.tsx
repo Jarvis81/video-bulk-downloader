@@ -25,6 +25,7 @@ import { QualitySelector } from "@/components/QualitySelector";
 import { SignIn } from "@/components/SignIn";
 import { VideoList } from "@/components/VideoList";
 import { HistoryPanel } from "@/components/HistoryPanel";
+import { BuyMeCoffee } from "@/components/BuyMeCoffee";
 
 type StatusFilter = "all" | "pending" | "active" | "completed" | "failed";
 
@@ -316,6 +317,7 @@ export default function WorkspacePage() {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
+      <BuyMeCoffee />
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* header + scan */}
