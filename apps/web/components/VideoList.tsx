@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, RotateCw, X } from "lucide-react";
+import { Download, Loader2, RotateCw, X } from "lucide-react";
 import type { Video } from "@vbd/shared";
 import { Thumb } from "./Thumb";
 import { PlatformBadge, StatusBadge } from "./badges";
@@ -35,7 +35,8 @@ export function VideoList({
     <ul className="flex flex-col gap-1">
       {videos.map((v) => {
         const active = v.downloadStatus === "downloading" || v.downloadStatus === "queued";
-        const isSel = selected.has(v.id);
+        const processing = active || v.downloadStatus === "converting";
+        const isSel = selected.has(v.id) && !processing;
         return (
           <li
             key={v.id}
@@ -46,8 +47,10 @@ export function VideoList({
             <input
               type="checkbox"
               checked={isSel}
+              disabled={processing}
               onChange={() => onToggle(v.id)}
-              className="size-3.5 shrink-0 accent-[var(--color-accent)]"
+              title={processing ? "Already processing" : undefined}
+              className="size-3.5 shrink-0 accent-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40"
             />
             <Thumb video={v} />
 
@@ -107,6 +110,10 @@ export function VideoList({
                 <button onClick={() => onCancel(v.id)} className="icon-btn size-7" title="Cancel">
                   <X size={15} />
                 </button>
+              ) : v.downloadStatus === "converting" ? (
+                <span className="icon-btn size-7" title="Converting to H.264">
+                  <Loader2 size={15} className="animate-spin" />
+                </span>
               ) : v.downloadStatus === "error" || v.downloadStatus === "canceled" ? (
                 <button onClick={() => onRetry(v.id)} className="icon-btn size-7" title="Retry">
                   <RotateCw size={15} />

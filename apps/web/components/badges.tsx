@@ -26,6 +26,7 @@ const STATUS: Record<DownloadStatus, { label: string; color: string }> = {
   idle: { label: "Idle", color: "var(--color-text-subtle)" },
   queued: { label: "Queued", color: "var(--color-warn)" },
   downloading: { label: "Downloading", color: "var(--color-accent)" },
+  converting: { label: "Converting", color: "var(--color-warn)" },
   completed: { label: "Completed", color: "var(--color-ok)" },
   error: { label: "Error", color: "var(--color-danger)" },
   skipped: { label: "Skipped", color: "var(--color-text-subtle)" },

@@ -226,6 +226,8 @@ const PROGRESS_TEMPLATE =
 export interface DownloadCallbacks {
   onProgress: (progress: number, speed: string | null, eta: string | null) => void;
   onFilePath?: (filePath: string) => void;
+  /** Fired when the engine starts a post-download transcode (e.g. HEVC → H.264). */
+  onConverting?: () => void;
 }
 
 export interface DownloadResult {

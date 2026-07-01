@@ -1,8 +1,8 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { YTDLP_PATH, isWindows } from "../config.js";
+import { FFMPEG_DIR, FFMPEG_PATH, YTDLP_PATH, isWindows } from "../config.js";
 import type { CookieConfig } from "../ytdlp.js";
 
 /**
@@ -122,4 +122,64 @@ export async function materializeCookieFile(
     return ok ? { path: tmp, cleanup } : { path: null, cleanup };
   }
   return { path: null, cleanup: noop };
+}
+
+/* ------------------------------- codec ------------------------------------- */
+
+const FFPROBE_PATH = path.join(FFMPEG_DIR, isWindows ? "ffprobe.exe" : "ffprobe");
+const H264_CODECS = new Set(["h264", "avc1", "avc"]);
+
+/** Video codec of a media file via ffprobe (e.g. "h264", "hevc"); "" on failure. */
+export function videoCodec(file: string): string {
+  try {
+    const r = spawnSync(
+      FFPROBE_PATH,
+      ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name", "-of", "default=nk=1:nw=1", file],
+      { windowsHide: true, encoding: "utf8" },
+    );
+    return (r.stdout ?? "").trim().toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Guarantee a Windows-playable H.264 file: if `file` isn't already H.264, transcode
+ * it in place (libx264 + AAC). Used for non-"best" Douyin downloads, where the
+ * source Douyin stream is frequently HEVC (needs the paid HEVC extension to play).
+ * On failure it leaves the original file rather than failing the whole download.
+ */
+export async function ensureH264(file: string, onConvert?: () => void): Promise<void> {
+  if (!fs.existsSync(file)) return;
+  if (H264_CODECS.has(videoCodec(file))) return;
+  onConvert?.();
+  const ext = path.extname(file) || ".mp4";
+  const tmp = path.join(path.dirname(file), `${path.basename(file, ext)}.h264${ext}`);
+  // Keep it light on the machine: fast preset + cap threads to ~half the cores so
+  // a transcode doesn't peg the CPU.
+  const threads = String(Math.max(1, Math.floor((os.cpus()?.length || 2) / 2)));
+  const ok = await new Promise<boolean>((resolve) => {
+    const c = spawn(
+      FFMPEG_PATH,
+      ["-y", "-threads", threads, "-i", file, "-c:v", "libx264", "-preset", "veryfast",
+       "-crf", "23", "-c:a", "aac", "-movflags", "+faststart", tmp],
+      { windowsHide: true },
+    );
+    c.on("error", () => resolve(false));
+    c.on("close", (code) => resolve(code === 0));
+  });
+  if (!ok) {
+    try {
+      fs.rmSync(tmp, { force: true });
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+  try {
+    fs.rmSync(file, { force: true });
+    fs.renameSync(tmp, file);
+  } catch {
+    /* ignore */
+  }
 }

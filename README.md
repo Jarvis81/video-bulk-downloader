@@ -7,6 +7,8 @@ progress.
 
 Runs as a local web app, or as a packaged Windows desktop app built on Electron.
 
+![Jerry Vids Downloader — bulk-downloading a Douyin channel](docs/demos/Douyin.png)
+
 ## Features
 
 - Bulk listing of an entire channel or playlist, or a single video.

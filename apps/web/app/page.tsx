@@ -41,7 +41,7 @@ function matchesFilter(status: DownloadStatus, f: StatusFilter): boolean {
     case "pending":
       return status === "idle";
     case "active":
-      return status === "downloading" || status === "queued";
+      return status === "downloading" || status === "queued" || status === "converting";
     case "completed":
       return status === "completed";
     case "failed":
@@ -49,6 +49,12 @@ function matchesFilter(status: DownloadStatus, f: StatusFilter): boolean {
     default:
       return true;
   }
+}
+
+// Videos being worked on can't be (re)selected/downloaded.
+const PROCESSING: DownloadStatus[] = ["queued", "downloading", "converting"];
+function isProcessing(v: Video): boolean {
+  return PROCESSING.includes(v.downloadStatus);
 }
 
 export default function WorkspacePage() {
@@ -234,11 +240,21 @@ export default function WorkspacePage() {
   }
 
   const download = useMutation({
-    mutationFn: async (ids: string[]) => {
+    mutationFn: async (ids: string[]): Promise<string[]> => {
       if (ids.length === 0) throw new Error("Select at least one video");
       const folder = await ensureFolder();
-      if (!folder) return;
+      if (!folder) return [];
       await startDownload(jobId as string, ids, folder);
+      return ids;
+    },
+    // Once enqueued, uncheck them so they can't be re-downloaded while processing.
+    onSuccess: (enqueued) => {
+      if (!enqueued.length) return;
+      setSelected((prev) => {
+        const next = new Set(prev);
+        for (const id of enqueued) next.delete(id);
+        return next;
+      });
     },
   });
 
@@ -269,7 +285,7 @@ export default function WorkspacePage() {
   }, [videos]);
 
   const selectedCount = useMemo(
-    () => videos.filter((v) => selected.has(v.id)).length,
+    () => videos.filter((v) => selected.has(v.id) && !isProcessing(v)).length,
     [videos, selected],
   );
 
@@ -282,13 +298,16 @@ export default function WorkspacePage() {
     [videos],
   );
 
-  const allFilteredSelected = filtered.length > 0 && filtered.every((v) => selected.has(v.id));
-  const someFilteredSelected = filtered.some((v) => selected.has(v.id));
+  // Only videos that aren't already being processed can be (de)selected in bulk.
+  const selectableFiltered = useMemo(() => filtered.filter((v) => !isProcessing(v)), [filtered]);
+  const allFilteredSelected =
+    selectableFiltered.length > 0 && selectableFiltered.every((v) => selected.has(v.id));
+  const someFilteredSelected = selectableFiltered.some((v) => selected.has(v.id));
 
   function setSelectedForFiltered(checked: boolean) {
     setSelected((prev) => {
       const next = new Set(prev);
-      for (const v of filtered) checked ? next.add(v.id) : next.delete(v.id);
+      for (const v of selectableFiltered) checked ? next.add(v.id) : next.delete(v.id);
       return next;
     });
   }
@@ -373,21 +392,51 @@ export default function WorkspacePage() {
               )}
             </form>
 
-            {/* settings strip */}
-            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
-              {job && <QualitySelector job={job} />}
-              {job && <SignIn job={job} />}
-              {!job?.defaultFolder && (
+            {/* settings strip: Sign in on the left · Quality + actions on the right */}
+            <div className="mt-2.5 flex items-start gap-3">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
+                {job && <SignIn job={job} />}
+                {!job?.defaultFolder && (
+                  <button
+                    onClick={changeFolder}
+                    className="inline-flex items-center gap-1 hover:text-[var(--color-text)]"
+                  >
+                    <FolderOpen size={13} /> Choose folder… (asked on first download)
+                  </button>
+                )}
+                {scan.error && (
+                  <span className="text-[var(--color-danger)]">{(scan.error as Error).message}</span>
+                )}
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2">
+                {job && <QualitySelector job={job} />}
+                {hasActive && (
+                  <button
+                    onClick={() => activeScanId && cancelScan(activeScanId)}
+                    title="Cancel queued + in-progress downloads in this scan"
+                    className="btn btn-danger px-3 py-2 text-xs"
+                  >
+                    <Ban size={14} /> Cancel
+                  </button>
+                )}
                 <button
-                  onClick={changeFolder}
-                  className="inline-flex items-center gap-1 hover:text-[var(--color-text)]"
+                  onClick={() =>
+                    download.mutate(
+                      videos.filter((v) => selected.has(v.id) && !isProcessing(v)).map((v) => v.id),
+                    )
+                  }
+                  disabled={download.isPending || selectedCount === 0}
+                  className="btn btn-accent px-4 py-2 text-xs"
                 >
-                  <FolderOpen size={13} /> Choose folder… (asked on first download)
+                  {download.isPending ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Download size={14} />
+                  )}
+                  Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
                 </button>
-              )}
-              {scan.error && (
-                <span className="text-[var(--color-danger)]">{(scan.error as Error).message}</span>
-              )}
+              </div>
             </div>
           </div>
         </header>
@@ -454,7 +503,9 @@ export default function WorkspacePage() {
                   onClick={() =>
                     setSelected(
                       new Set(
-                        filtered.filter((v) => v.downloadStatus !== "completed").map((v) => v.id),
+                        filtered
+                          .filter((v) => v.downloadStatus !== "completed" && !isProcessing(v))
+                          .map((v) => v.id),
                       ),
                     )
                   }
@@ -490,31 +541,6 @@ export default function WorkspacePage() {
                 ))}
               </div>
 
-              <div className="ml-auto flex items-center gap-2">
-                {hasActive && (
-                  <button
-                    onClick={() => activeScanId && cancelScan(activeScanId)}
-                    title="Cancel queued + in-progress downloads in this scan"
-                    className="btn btn-danger px-3 py-2 text-xs"
-                  >
-                    <Ban size={14} /> Cancel
-                  </button>
-                )}
-                <button
-                  onClick={() =>
-                    download.mutate(videos.filter((v) => selected.has(v.id)).map((v) => v.id))
-                  }
-                  disabled={download.isPending || selectedCount === 0}
-                  className="btn btn-accent px-4 py-2 text-xs"
-                >
-                  {download.isPending ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <Download size={14} />
-                  )}
-                  Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
-                </button>
-              </div>
             </div>
 
             {(download.error || activeScan?.status === "error") && (

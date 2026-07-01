@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, Ban, Check, CheckCircle2, Clock, Loader2, RotateCw, Trash2, X } from "lucide-react";
+import { AlertCircle, Ban, Check, CheckCircle2, Clock, Copy, Loader2, RotateCw, Trash2, X } from "lucide-react";
 import type { Scan } from "@vbd/shared";
 import { PlatformBadge } from "./badges";
 import { formatDate } from "@/lib/format";
@@ -37,6 +37,26 @@ export function HistoryPanel({
   deletingId,
 }: Props) {
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copyLink = async (scan: Scan) => {
+    try {
+      await navigator.clipboard.writeText(scan.sourceUrl);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = scan.sourceUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+      } catch {
+        /* ignore */
+      }
+      document.body.removeChild(ta);
+    }
+    setCopied(scan.id);
+    window.setTimeout(() => setCopied((c) => (c === scan.id ? null : c)), 1500);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -101,16 +121,34 @@ export function HistoryPanel({
                         </button>
                       </span>
                     ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirming(s.id);
-                        }}
-                        title="Delete scan"
-                        className="icon-btn size-6 opacity-0 transition hover:text-[var(--color-danger)] group-hover:opacity-100"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      <span className="flex items-center gap-0.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyLink(s);
+                          }}
+                          title="Copy scanned link"
+                          className={`icon-btn size-6 transition group-hover:opacity-100 ${
+                            copied === s.id ? "opacity-100" : "opacity-0"
+                          }`}
+                        >
+                          {copied === s.id ? (
+                            <Check size={13} className="text-[var(--color-ok)]" />
+                          ) : (
+                            <Copy size={13} />
+                          )}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirming(s.id);
+                          }}
+                          title="Delete scan"
+                          className="icon-btn size-6 opacity-0 transition hover:text-[var(--color-danger)] group-hover:opacity-100"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </span>
                     )}
                   </div>
 

@@ -17,6 +17,7 @@ export type DownloadStatus =
   | "idle"
   | "queued"
   | "downloading"
+  | "converting"
   | "completed"
   | "error"
   | "skipped"

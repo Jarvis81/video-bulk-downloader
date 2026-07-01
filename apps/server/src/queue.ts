@@ -166,6 +166,10 @@ async function runDownload(videoId: string): Promise<void> {
           videos.setProgress(videoId, progress, speed, eta);
         }
       },
+      onConverting: () => {
+        videos.setStatus(videoId, "converting", { progress: 100, speed: null, eta: null, error: null });
+        emitVideoStatus(videoId);
+      },
     },
   );
   activeHandles.set(videoId, handle);

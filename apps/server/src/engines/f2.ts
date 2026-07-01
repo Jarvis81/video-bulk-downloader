@@ -4,7 +4,7 @@ import fs from "node:fs";
 import type { Platform } from "@vbd/shared";
 import { F2_PATH, FFMPEG_DIR, f2Exists } from "../config.js";
 import type { DownloadHandle, DownloadResult, ScanHandle } from "../ytdlp.js";
-import { killTree, materializeCookieFile, parseProgressLine } from "./shared.js";
+import { ensureH264, killTree, materializeCookieFile, parseProgressLine } from "./shared.js";
 import type { DownloadFn, ScanFn } from "./types.js";
 
 /**
@@ -136,6 +136,13 @@ export const f2Download: DownloadFn = (opts, cb): DownloadHandle => {
     if (canceled) throw new Error("canceled");
     if (code !== 0) {
       throw new Error(stderr.trim().split("\n").slice(-3).join("\n") || `f2 exited with code ${code}`);
+    }
+
+    // For any non-"best" quality, guarantee a Windows-playable H.264 file (Douyin
+    // commonly serves HEVC). "best" is kept as-is. Runs here in Node so it ships
+    // with a normal `pnpm app` build — no need to rebuild bin/f2.exe.
+    if (finalPath && quality !== "best" && !/\.(mp3|m4a|aac|wav)$/i.test(finalPath)) {
+      await ensureH264(finalPath, () => cb.onConverting?.());
     }
 
     let filesize: number | null = null;

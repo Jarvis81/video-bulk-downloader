@@ -270,6 +270,131 @@ async def do_list(url: str, cookie: str, limit: int) -> None:
     )
 
 
+# --------------------------- codec / quality -------------------------------- #
+# Douyin serves multiple codecs; bit_rate[0] (what f2's video_play_addr returns) is
+# often HEVC/H.265, which needs the paid HEVC extension to play on Windows. Pick an
+# H.264 stream within the requested quality cap instead; transcode only if there is
+# no H.264 variant at all.
+QUALITY_CAP = {"1080": 1080, "720": 720, "480": 480, "360": 360}
+
+
+def _entry_res(br: dict) -> int:
+    pa = br.get("play_addr") or {}
+    w, h = pa.get("width") or 0, pa.get("height") or 0
+    if w and h:
+        return min(w, h)  # vertical clips: short side ≈ the "p" label
+    m = re.search(r"(\d{3,4})", str(br.get("gear_name") or ""))
+    return int(m.group(1)) if m else 0
+
+
+def _raw_response(v) -> dict:
+    """Best-effort access to f2's underlying raw API dict."""
+    for attr in ("_data", "data", "_dict", "raw_data"):
+        d = getattr(v, attr, None)
+        if isinstance(d, dict):
+            return d
+    for meth in ("_to_raw", "_to_dict"):
+        try:
+            d = getattr(v, meth)()
+            if isinstance(d, dict):
+                return d
+        except Exception:
+            pass
+    return {}
+
+
+def _bitrates_from(d: dict) -> list:
+    if not isinstance(d, dict):
+        return []
+    for key in ("aweme_list", "aweme_details", "data"):
+        lst = d.get(key)
+        if isinstance(lst, list) and lst and isinstance(lst[0], dict):
+            br = (lst[0].get("video") or {}).get("bit_rate")
+            if isinstance(br, list) and br:
+                return br
+    for key in ("aweme_detail", "aweme_info"):
+        det = d.get(key)
+        if isinstance(det, dict):
+            br = (det.get("video") or {}).get("bit_rate")
+            if isinstance(br, list) and br:
+                return br
+    vid = d.get("video")
+    if isinstance(vid, dict) and isinstance(vid.get("bit_rate"), list):
+        return vid["bit_rate"]
+    return []
+
+
+def raw_bitrates(v) -> list:
+    """Raw Douyin video.bit_rate list (dicts with is_h265 + play_addr); best-effort.
+    Getting this lets us download a native H.264 stream and skip transcoding."""
+    try:
+        br = v._get_attr_value("$.aweme_list[0].video.bit_rate")
+        if isinstance(br, list) and br:
+            return br
+    except Exception:
+        pass
+    return _bitrates_from(_raw_response(v))
+
+
+def pick_stream(bitrates: list, quality: str):
+    """Choose {url, h265, res, bitrate} preferring H.264 within the quality cap."""
+    cands = []
+    for br in bitrates or []:
+        urls = ((br.get("play_addr") or {}).get("url_list")) or []
+        if not urls:
+            continue
+        cands.append(
+            {
+                "url": urls[0],
+                "res": _entry_res(br),
+                "h265": br.get("is_h265") in (1, "1", True),
+                "bitrate": br.get("bit_rate") or 0,
+            }
+        )
+    if not cands:
+        return None
+    cap = QUALITY_CAP.get(quality)
+
+    def pool(allow_h265: bool):
+        return [
+            c
+            for c in cands
+            if (allow_h265 or not c["h265"]) and (not cap or not c["res"] or c["res"] <= cap)
+        ]
+
+    # Prefer H.264 within the cap; only fall back to HEVC if no H.264 exists.
+    for allow_h265 in (False, True):
+        p = pool(allow_h265)
+        if p:
+            p.sort(key=lambda c: (c["res"], c["bitrate"]), reverse=True)
+            return p[0]
+    cands.sort(key=lambda c: (c["res"], c["bitrate"]), reverse=True)
+    return cands[0]
+
+
+def ffmpeg_bin(ffmpeg_dir: str | None) -> str:
+    name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+    return os.path.join(ffmpeg_dir, name) if ffmpeg_dir else "ffmpeg"
+
+
+def ffprobe_bin(ffmpeg_dir: str | None) -> str:
+    name = "ffprobe.exe" if os.name == "nt" else "ffprobe"
+    return os.path.join(ffmpeg_dir, name) if ffmpeg_dir else "ffprobe"
+
+
+def video_codec_of(path: str, ffmpeg_dir: str | None) -> str:
+    """Actual video codec of a file via ffprobe ('h264', 'hevc', …); '' on failure."""
+    try:
+        out = subprocess.run(
+            [ffprobe_bin(ffmpeg_dir), "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=codec_name", "-of", "default=nk=1:nw=1", path],
+            capture_output=True, text=True, timeout=30,
+        )
+        return (out.stdout or "").strip().lower()
+    except Exception:
+        return ""
+
+
 # -------------------------------- download ---------------------------------- #
 
 async def do_download(
@@ -285,7 +410,15 @@ async def do_download(
     aweme_id = resolve_aweme_id(url, platform, cookie)
     v = await handler.fetch_one_video(aweme_id)
     sid = str(_first(v.aweme_id) or aweme_id)
-    play = _play_url(_first(v.video_play_addr))
+
+    # "best" → Douyin's top stream as-is (may be HEVC, no conversion). Otherwise
+    # prefer an H.264 stream at the requested quality (codec is then guaranteed
+    # after download via ffprobe).
+    if quality == "best":
+        play = _play_url(_first(v.video_play_addr))
+    else:
+        choice = pick_stream(raw_bitrates(v), quality)
+        play = choice["url"] if choice else _play_url(_first(v.video_play_addr))
     if not play:
         die(f"No downloadable video stream for {sid} (image post or region-locked?)")
 
@@ -322,9 +455,8 @@ async def do_download(
     final = os.path.join(folder, f"{sid}.mp4")
     if quality == "audio":
         final = os.path.join(folder, f"{sid}.mp3")
-        ff_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
-        ff = os.path.join(ffmpeg_dir, ff_name) if ffmpeg_dir else "ffmpeg"
-        cmd = [ff, "-y", "-i", tmp_path, "-vn", "-acodec", "libmp3lame", "-q:a", "2", final]
+        cmd = [ffmpeg_bin(ffmpeg_dir), "-y", "-i", tmp_path, "-vn", "-acodec",
+               "libmp3lame", "-q:a", "2", final]
         proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         if proc.returncode != 0:
             die("ffmpeg audio extraction failed:\n" + proc.stderr.decode("utf-8", "ignore"))
@@ -332,7 +464,21 @@ async def do_download(
             os.remove(tmp_path)
         except OSError:
             pass
+    elif quality != "best" and video_codec_of(tmp_path, ffmpeg_dir) not in ("h264", "avc1", "avc"):
+        # Non-best: guarantee a Windows-playable H.264 file (Douyin often serves HEVC).
+        sys.stderr.write("Transcoding to H.264 for compatibility...\n")
+        sys.stderr.flush()
+        cmd = [ffmpeg_bin(ffmpeg_dir), "-y", "-i", tmp_path, "-c:v", "libx264",
+               "-preset", "fast", "-crf", "23", "-c:a", "aac", "-movflags", "+faststart", final]
+        proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        if proc.returncode != 0:
+            die("ffmpeg transcode failed:\n" + proc.stderr.decode("utf-8", "ignore"))
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
     else:
+        # "best" (any codec, no conversion) or already H.264.
         os.replace(tmp_path, final)
 
     emit_line(final)  # last bare line = absolute saved path (like after_move:filepath)
